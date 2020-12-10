@@ -12,6 +12,7 @@ PREFIX	?= arm-none-eabi-
 
 CC	= $(PREFIX)gcc
 CPP	= $(PREFIX)g++
+CXX	= $(PREFIX)g++
 AS	= $(CC)
 LD	= $(PREFIX)ld
 AR	= $(PREFIX)ar
@@ -39,9 +40,12 @@ else
 endif
 
 AFLAGS	 += $(ARCH)
-CFLAGS	 += $(ARCH) -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-psabi -fsigned-char -fno-builtin -Ofast -DNDEBUG
+CFLAGS	 += $(ARCH) -MMD -MP -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-psabi -fsigned-char -fno-builtin -Ofast -DNDEBUG
 CPPFLAGS := $(CFLAGS) $(CPPFLAGS) -fno-exceptions -fno-rtti -std=c++0x -Wno-write-strings
 CFLAGS	 += -fno-delete-null-pointer-checks -fdata-sections -ffunction-sections -u _printf_float -std=gnu99
+
+DEPENDS := $(patsubst %.o,%.d,$(OBJS))
+-include $(DEPENDS)
 
 .PHONY: clean
 
