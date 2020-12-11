@@ -3,9 +3,12 @@
 #include "net-ipv4.h"
 #include "net-arp.h"
 #include "net-icmp.h"
+#include "net-udp.h"
 
 #include "types.h"
 #include <uspi.h>
+#include <uspios.h>
+#include "ff.h"
 
 //
 // ARP
@@ -79,23 +82,303 @@ void HandleArpFrame(uint8_t* buffer)
 //
 // IPv4
 //
-uint64_t HandleIpv4Frame(const uint8_t* buffer)
+void HandleIpv4Frame(const uint8_t* buffer)
 {
 	const auto frame = EthernetFrame<Ipv4Header>::Deserialize(buffer);
 	const auto header = frame.payload;
 
-	if (header.version != 4) return 0x4;
-	if (header.ihl != 5) return 0x8; // Not supported
-	if (header.destinationIp != Ipv4Address) return 0x10 | std::uint64_t{header.destinationIp} << 32;
-	if (header.fragmentOffset != 0) return 0x20; // TODO Support this
+	// Update ARP table
+	ArpTable.insert(std::make_pair(frame.payload.sourceIp, frame.header.macSource));
+
+	if (header.version != 4) return;
+	if (header.ihl != 5) return; // Not supported
+	if (header.destinationIp != Ipv4Address) return;
+	if (header.fragmentOffset != 0) return; // TODO Support this
 
 	if (header.protocol == IP_PROTO_ICMP)
 	{
-		return HandleIcmpFrame(buffer) | 0x2;
+		HandleIcmpFrame(buffer);
 	}
-	return 0x0;
+	else if (header.protocol == IP_PROTO_UDP)
+	{
+		return HandleUdpFrame(buffer);
+	}
 }
 
+//
+// UDP
+//
+void HandleUdpFrame(const uint8_t* buffer)
+{
+	const auto frame = EthernetFrame<Ipv4Packet<UdpDatagramHeader>>::Deserialize(buffer);
+	const auto header = frame.payload.payload;
+
+	uint8_t* data = (uint8_t*)malloc(header.length);
+	memcpy(
+		data,
+		buffer + sizeof(EthernetFrameHeader) + sizeof(Ipv4Header) + sizeof(UdpDatagramHeader),
+		header.length
+	);
+
+	if (header.destinationPort == 69) // nice
+	{
+		HandleTftpDatagram(
+			frame.header,
+			frame.payload.header,
+			frame.payload.payload,
+			data
+		);
+	}
+}
+
+FIL tftpFp;
+bool shouldReboot = false;
+std::string tftpPrevCwd;
+
+void HandleTftpDatagram(
+	const EthernetFrameHeader ethernetReqHeader,
+	const Ipv4Header ipv4ReqHeader,
+	const UdpDatagramHeader udpReqHeader,
+	const uint8_t* data
+) {
+	const auto opcode = data[0] << 8 | data[1];
+	static auto currentBlockNumber = -1;
+	if (opcode == TFTP_OP_WRITE_REQUEST)
+	{
+		auto packet = TftpWriteReadRequestPacket::Deserialize(data);
+		if (packet.mode == "octet")
+		{
+			currentBlockNumber = 0;
+
+			// Try opening the file
+			{
+				char cwd[256];
+				f_getcwd(cwd, sizeof(cwd));
+				tftpPrevCwd = cwd;
+			}
+
+			auto separator = packet.filename.rfind('/', packet.filename.size());
+			if (separator != std::string::npos)
+			{
+				auto path = "/" + packet.filename.substr(0, separator);
+				f_chdir(path.c_str());
+			}
+			else
+			{
+				f_chdir("/");
+				separator = 0;
+			}
+
+			auto filename = packet.filename.substr(separator + 1);
+			const auto result = f_open(&tftpFp, filename.c_str(), FA_CREATE_ALWAYS | FA_WRITE);
+			if (result == FR_OK)
+			{
+				shouldReboot =
+					packet.filename == "kernel.img" || packet.filename == "options.txt";
+
+				TftpAcknowledgementPacket response(currentBlockNumber);
+				UdpDatagramHeader udpRespHeader(
+					udpReqHeader.destinationPort,
+					udpReqHeader.sourcePort,
+					response.SerializedLength() + UdpDatagramHeader::SerializedLength()
+				);
+				Ipv4Header ipv4RespHeader(
+					IP_PROTO_UDP,
+					Ipv4Address,
+					ipv4ReqHeader.sourceIp,
+					udpRespHeader.length + Ipv4Header::SerializedLength()
+				);
+				EthernetFrameHeader ethernetRespHeader(
+					ArpTable[ipv4RespHeader.destinationIp],
+					GetMacAddress(),
+					ETHERTYPE_IPV4
+				);
+
+				size_t i = 0;
+				uint8_t buffer[USPI_FRAME_BUFFER_SIZE];
+				i += ethernetRespHeader.Serialize(buffer + i);
+				i += ipv4RespHeader.Serialize(buffer + i);
+				i += udpRespHeader.Serialize(buffer + i);
+				i += response.Serialize(buffer + i);
+				USPiSendFrame(buffer, i);
+			}
+			else
+			{
+				TftpErrorPacket response(0, "error opening target file");
+				UdpDatagramHeader udpRespHeader(
+					udpReqHeader.destinationPort,
+					udpReqHeader.sourcePort,
+					response.SerializedLength() + UdpDatagramHeader::SerializedLength()
+				);
+				Ipv4Header ipv4RespHeader(
+					IP_PROTO_UDP,
+					Ipv4Address,
+					ipv4ReqHeader.sourceIp,
+					udpRespHeader.length + Ipv4Header::SerializedLength()
+				);
+				EthernetFrameHeader ethernetRespHeader(
+					ArpTable[ipv4RespHeader.destinationIp],
+					GetMacAddress(),
+					ETHERTYPE_IPV4
+				);
+
+				size_t i = 0;
+				uint8_t buffer[USPI_FRAME_BUFFER_SIZE];
+				i += ethernetRespHeader.Serialize(buffer + i);
+				i += ipv4RespHeader.Serialize(buffer + i);
+				i += udpRespHeader.Serialize(buffer + i);
+				i += response.Serialize(buffer + i);
+				USPiSendFrame(buffer, i);
+			}
+		}
+		else
+		{
+			TftpErrorPacket response(0, "please use mode octet");
+			UdpDatagramHeader udpRespHeader(
+				udpReqHeader.destinationPort,
+				udpReqHeader.sourcePort,
+				response.SerializedLength() + UdpDatagramHeader::SerializedLength()
+			);
+			Ipv4Header ipv4RespHeader(
+				IP_PROTO_UDP,
+				Ipv4Address,
+				ipv4ReqHeader.sourceIp,
+				udpRespHeader.length + Ipv4Header::SerializedLength()
+			);
+			EthernetFrameHeader ethernetRespHeader(
+				ArpTable[ipv4RespHeader.destinationIp],
+				GetMacAddress(),
+				ETHERTYPE_IPV4
+			);
+
+			size_t i = 0;
+			uint8_t buffer[USPI_FRAME_BUFFER_SIZE];
+			i += ethernetRespHeader.Serialize(buffer + i);
+			i += ipv4RespHeader.Serialize(buffer + i);
+			i += udpRespHeader.Serialize(buffer + i);
+			i += response.Serialize(buffer + i);
+			USPiSendFrame(buffer, i);
+		}
+	}
+	else if (opcode == TFTP_OP_DATA)
+	{
+		auto packet = TftpDataPacket::Deserialize(
+			data,
+			udpReqHeader.length - UdpDatagramHeader::SerializedLength()
+		);
+
+		if (packet.blockNumber == currentBlockNumber + 1)
+		{
+			const auto last = packet.data.size() < 512;
+			currentBlockNumber = packet.blockNumber;
+
+			unsigned int bytesWritten;
+			const auto response =
+				f_write(&tftpFp, packet.data.data(), packet.data.size(), &bytesWritten);
+			if (response == FR_OK || bytesWritten != packet.data.size())
+			{
+				TftpAcknowledgementPacket response(currentBlockNumber);
+				UdpDatagramHeader udpRespHeader(
+					udpReqHeader.destinationPort,
+					udpReqHeader.sourcePort,
+					response.SerializedLength() + UdpDatagramHeader::SerializedLength()
+				);
+				Ipv4Header ipv4RespHeader(
+					IP_PROTO_UDP,
+					Ipv4Address,
+					ipv4ReqHeader.sourceIp,
+					udpRespHeader.length + Ipv4Header::SerializedLength()
+				);
+				EthernetFrameHeader ethernetRespHeader(
+					ArpTable[ipv4RespHeader.destinationIp],
+					GetMacAddress(),
+					ETHERTYPE_IPV4
+				);
+
+				size_t i = 0;
+				uint8_t buffer[USPI_FRAME_BUFFER_SIZE];
+				i += ethernetRespHeader.Serialize(buffer + i);
+				i += ipv4RespHeader.Serialize(buffer + i);
+				i += udpRespHeader.Serialize(buffer + i);
+				i += response.Serialize(buffer + i);
+				USPiSendFrame(buffer, i);
+
+				if (last)
+				{
+					MsDelay(500);
+					f_close(&tftpFp);
+					f_chdir(tftpPrevCwd.c_str());
+					tftpPrevCwd.clear();
+
+					if (shouldReboot)
+					{
+						// TODO eww
+						extern void Reboot_Pi();
+						Reboot_Pi();
+					}
+				}
+			}
+			else
+			{
+				f_close(&tftpFp);
+
+				TftpErrorPacket response(0, "io error");
+				UdpDatagramHeader udpRespHeader(
+					udpReqHeader.destinationPort,
+					udpReqHeader.sourcePort,
+					response.SerializedLength() + UdpDatagramHeader::SerializedLength()
+				);
+				Ipv4Header ipv4RespHeader(
+					IP_PROTO_UDP,
+					Ipv4Address,
+					ipv4ReqHeader.sourceIp,
+					udpRespHeader.length + Ipv4Header::SerializedLength()
+				);
+				EthernetFrameHeader ethernetRespHeader(
+					ArpTable[ipv4RespHeader.destinationIp],
+					GetMacAddress(),
+					ETHERTYPE_IPV4
+				);
+
+				size_t i = 0;
+				uint8_t buffer[USPI_FRAME_BUFFER_SIZE];
+				i += ethernetRespHeader.Serialize(buffer + i);
+				i += ipv4RespHeader.Serialize(buffer + i);
+				i += udpRespHeader.Serialize(buffer + i);
+				i += response.Serialize(buffer + i);
+				USPiSendFrame(buffer, i);
+			}
+		}
+		else
+		{
+			TftpErrorPacket response(0, "invalid block number");
+			UdpDatagramHeader udpRespHeader(
+				udpReqHeader.destinationPort,
+				udpReqHeader.sourcePort,
+				response.SerializedLength() + UdpDatagramHeader::SerializedLength()
+			);
+			Ipv4Header ipv4RespHeader(
+				IP_PROTO_UDP,
+				Ipv4Address,
+				ipv4ReqHeader.sourceIp,
+				udpRespHeader.length + Ipv4Header::SerializedLength()
+			);
+			EthernetFrameHeader ethernetRespHeader(
+				ArpTable[ipv4RespHeader.destinationIp],
+				GetMacAddress(),
+				ETHERTYPE_IPV4
+			);
+
+			size_t i = 0;
+			uint8_t buffer[USPI_FRAME_BUFFER_SIZE];
+			i += ethernetRespHeader.Serialize(buffer + i);
+			i += ipv4RespHeader.Serialize(buffer + i);
+			i += udpRespHeader.Serialize(buffer + i);
+			i += response.Serialize(buffer + i);
+			USPiSendFrame(buffer, i);
+		}
+	}
+}
 
 //
 // ICMP
@@ -115,7 +398,7 @@ void SendIcmpEchoRequest(MacAddress mac, uint32_t ip)
 	USPiSendFrame(buffer, size);
 }
 
-uint64_t HandleIcmpFrame(const uint8_t* buffer)
+void HandleIcmpFrame(const uint8_t* buffer)
 {
 	const auto frame = EthernetFrame<Ipv4Packet<IcmpPacketHeader>>::Deserialize(buffer);
 	const auto packetHeader = frame.payload.payload;
@@ -125,7 +408,7 @@ uint64_t HandleIcmpFrame(const uint8_t* buffer)
 		// TODO This should not be hardcoded lol
 		typedef EthernetFrame<Ipv4Packet<IcmpPacket<IcmpEchoRequest<uint8_t[56]>>>> Frame;
 		auto frameReq = Frame::Deserialize(buffer);
-		
+
 		auto echoReq = frameReq.payload.payload.payload;
 
 		IcmpEchoResponse<uint8_t[56]> echoResp;
@@ -154,10 +437,7 @@ uint64_t HandleIcmpFrame(const uint8_t* buffer)
 		uint8_t bufferResp[USPI_FRAME_BUFFER_SIZE];
 		const auto size = frameResp.Serialize(bufferResp);
 		USPiSendFrame(bufferResp, size);
-
-		return 0x1;
 	}
-	return 0x0 | std::uint64_t{packetHeader.type} << 32;
 }
 
 //
@@ -278,4 +558,5 @@ MacAddress GetMacAddress()
 const uint32_t Ipv4Address = 0xC0A80164;
 const MacAddress MacBroadcast{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
+bool FileUploaded = false;
 std::unordered_map<std::uint32_t, MacAddress> ArpTable;

@@ -179,6 +179,13 @@ int _lseek(int file, int ptr, int dir)
 /* Open a file. Minimal implementation: */
 int open(const char *name, int flags, int mode)
 {
+  errno = ENOSYS;
+  return -1;
+}
+
+int _open(const char *name, int flags, int mode)
+{
+  errno = ENOSYS;
   return -1;
 }
 

@@ -367,6 +367,35 @@ void InitialiseLCD()
 //		printf("\E[1ALED %s%d\E[0m Motor %d Track %0d.%d ATN %d DAT %d CLK %d %s\r\n", LED ? termainalTextRed : termainalTextNormal, LED, Motor, Track >> 1, Track & 1 ? 5 : 0, ATN, DATA, CLOCK, roms.ROMNames[romIndex]);
 //}
 
+void updateNetwork()
+{
+	size_t size;
+	uint8_t ipBuffer[USPI_FRAME_BUFFER_SIZE];
+	if (!USPiEthernetAvailable() || !USPiReceiveFrame(ipBuffer, &size))
+	{
+		return;
+	}
+
+	auto header = EthernetFrameHeader::Deserialize(ipBuffer);
+
+	static bool announcementSent = false;
+	if (!announcementSent)
+	{
+		SendArpAnnouncement(GetMacAddress(), Ipv4Address);
+		announcementSent = true;
+	}
+
+	switch (header.type)
+	{
+	case ETHERTYPE_ARP:
+		HandleArpFrame(ipBuffer);
+		break;
+	case ETHERTYPE_IPV4:
+		HandleIpv4Frame(ipBuffer);
+		break;
+	}
+}
+
 // This runs on core0 and frees up core1 to just run the emulator.
 // Care must be taken not to crowd out the shared cache with core1 as this could slow down core1 so that it no longer can perform its duties in the 1us timings it requires.
 void UpdateScreen()
@@ -630,6 +659,8 @@ void UpdateScreen()
 
 		//if (options.GetSupportUARTInput())
 		//	UpdateUartControls(refreshUartStatusDisplay, oldLED, oldMotor, oldATN, oldDATA, oldCLOCK, oldTrack, romIndex);
+		
+		updateNetwork();
 
 		// Go back to sleep. The USB irq will wake us up again.
 		__asm ("WFE");
@@ -1911,7 +1942,6 @@ extern "C"
 
 		InitialiseLCD();
 #if not defined(EXPERIMENTALZERO)
-		int y_pos = 184;
 		snprintf(tempBuffer, tempBufferSize, "Copyright(C) 2018 Stephen White");
 		screen.PrintText(false, 0, y_pos+=16, tempBuffer, COLOUR_WHITE, COLOUR_BLACK);
 		snprintf(tempBuffer, tempBufferSize, "This program comes with ABSOLUTELY NO WARRANTY.");
@@ -1949,73 +1979,11 @@ extern "C"
 		inputMappings = new InputMappings();
 		//USPiMouseRegisterStatusHandler(MouseHandler);
 		
-		MsDelay(3000);
 		while (!USPiEthernetAvailable()) {
 			snprintf(tempBuffer, tempBufferSize, "Waiting for ethernet...");
 			screen.PrintText(false, 0, y_pos+=16, tempBuffer, COLOUR_WHITE, COLOUR_BLACK);
-			MsDelay(1000);
+			MsDelay(500);
 		}
-
-		uint8_t ipBuffer[USPI_FRAME_BUFFER_SIZE];
-
-		if (USPiEthernetAvailable()) {
-			std::array<std::uint8_t, 6> macAddress;
-			USPiGetMACAddress(macAddress.data());
-
-			snprintf(tempBuffer, tempBufferSize, "Ethernet found");
-			screen.PrintText(false, 0, y_pos+=16, tempBuffer, COLOUR_WHITE, COLOUR_BLACK);
-
-			// Send an ARP announcement
-			SendArpAnnouncement(macAddress, Ipv4Address);
-
-			while (true)
-			{
-				size_t size;
-				if (!USPiReceiveFrame(ipBuffer, &size))
-				{
-					/*
-					const auto targetIp = 0xC0A80128;
-					const auto targetMacIter = ArpTable.find(targetIp);
-
-					if (targetMacIter != ArpTable.end())
-					{
-						const auto targetMac = targetMacIter->second;
-						SendIcmpEchoRequest(targetMac, targetIp);
-					}
-					else
-					{
-						// Send an ARP request to find the MAC address belonging to this IP.
-						SendArpRequest(MacBroadcast, macAddress, targetIp, Ipv4Address);
-					}
-					*/
-
-					MsDelay(100);
-					continue;
-				}
-
-				auto header = EthernetFrameHeader::Deserialize(ipBuffer);
-
-				snprintf(
-					tempBuffer,
-					tempBufferSize,
-					"Received frame of ethertype %04x",
-					header.type
-				);
-				screen.PrintText(false, 0, y_pos+=16, tempBuffer, COLOUR_WHITE, COLOUR_BLACK);
-
-				if (header.type == ETHERTYPE_ARP)
-				{
-					HandleArpFrame(ipBuffer);
-				}
-				else if (header.type == ETHERTYPE_IPV4)
-				{
-					uint64_t debug = HandleIpv4Frame(ipBuffer);
-					snprintf(tempBuffer, tempBufferSize, "Debug: %016llx", debug);
-					screen.PrintText(false, 0, y_pos+=16, tempBuffer, COLOUR_WHITE, COLOUR_BLACK);
-				}
-			}
-		}
-
 
 		CheckOptions();
 

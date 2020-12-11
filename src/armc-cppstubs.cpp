@@ -30,13 +30,3 @@ void operator delete (void* ptr)
 	free(ptr);
 }
 
-namespace std
-{
-	void __throw_bad_alloc()
-	{
-	}
-
-	void __throw_length_error(char const*e)
-	{
-	}
-}

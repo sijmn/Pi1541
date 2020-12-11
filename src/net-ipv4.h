@@ -4,6 +4,8 @@
 enum IpProtocols
 {
 	IP_PROTO_ICMP = 1,
+	IP_PROTO_TCP = 6,
+	IP_PROTO_UDP = 17,
 };
 
 struct Ipv4Header
@@ -41,6 +43,11 @@ struct Ipv4Header
 		sourceIp(sourceIp),
 		destinationIp(destinationIp)
 	{
+	}
+
+	static constexpr size_t SerializedLength()
+	{
+		return sizeof(Ipv4Header);
 	}
 	
 	size_t Serialize(uint8_t* buffer)

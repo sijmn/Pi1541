@@ -17,6 +17,9 @@ enum ArpOperation {
 
 typedef std::array<uint8_t, 6> MacAddress;
 
+//
+// ARP
+//
 void HandleArpFrame(uint8_t* buffer);
 void SendArpPacket(ArpOperation operation,
 					MacAddress targetMac,
@@ -33,11 +36,36 @@ void SendArpReply(MacAddress targetMac,
 					uint32_t targetIp);
 void SendArpAnnouncement(MacAddress mac, uint32_t ip);
 
-uint64_t HandleIpv4Frame(const uint8_t* buffer);
+//
+// IPv4
+//
+void HandleIpv4Frame(const uint8_t* buffer);
 
+//
+// UDP
+//
+struct EthernetFrameHeader;
+struct UdpDatagramHeader;
+struct Ipv4Header;
+
+void HandleUdpFrame(const uint8_t* buffer);
+
+void HandleTftpDatagram(
+	const EthernetFrameHeader ethernetReqHeader,
+	const Ipv4Header ipv4ReqHeader,
+	const UdpDatagramHeader udpReqHeader,
+	const uint8_t* buffer
+);
+
+//
+// ICMP
+//
 void SendIcmpEchoRequest(MacAddress mac, uint32_t ip);
-uint64_t HandleIcmpFrame(const uint8_t* buffer);
+void HandleIcmpFrame(const uint8_t* buffer);
 
+//
+// Helpers
+//
 std::uint32_t Crc32(const std::uint8_t* buffer, std::size_t size);
 std::uint16_t InternetChecksum(const void* data, std::size_t size);
 MacAddress GetMacAddress();
@@ -45,56 +73,5 @@ MacAddress GetMacAddress();
 extern const MacAddress MacBroadcast;
 extern const uint32_t Ipv4Address;
 
+extern bool FileUploaded;
 extern std::unordered_map<std::uint32_t, MacAddress> ArpTable;
-
-struct UdpDatagramHeader
-{
-	std::uint16_t sourcePort;
-	std::uint16_t destinationPort;
-	std::uint16_t length;
-	std::uint16_t checksum;
-
-	UdpDatagramHeader() {}
-
-	UdpDatagramHeader(uint16_t sourcePort, uint16_t destinationPort, uint16_t length) :
-		sourcePort(sourcePort), destinationPort(destinationPort), length(length)
-	{}
-
-	size_t Serialize(uint8_t* buffer)
-	{
-		size_t i = 0;
-		buffer[i++] = sourcePort >> 8;
-		buffer[i++] = sourcePort;
-		buffer[i++] = destinationPort >> 8;
-		buffer[i++] = destinationPort;
-		buffer[i++] = length >> 8;
-		buffer[i++] = length;
-		buffer[i++] = checksum >> 8;
-		buffer[i++] = checksum;
-		return i;
-	}
-
-	UdpDatagramHeader Deserialize(const uint8_t* buffer)
-	{
-		UdpDatagramHeader self;
-		self.sourcePort = buffer[0] << 8 | buffer[1];
-		self.destinationPort = buffer[2] << 8 | buffer[3];
-		self.length = buffer[4] << 8 | buffer[5];
-		self.checksum = buffer[6] << 8 | buffer[7];
-		return self;
-	}
-};
-
-template <class T>
-struct UdpDatagram
-{
-	UdpDatagramHeader header;
-	T payload;
-
-	UdpDatagram() {}
-
-	UdpDatagram(uint16_t sourcePort, uint16_t destinationPort, T payload) :
-		header(sourcePort, destinationPort, sizeof(UdpDatagram<T>)),
-		payload(payload)
-	{}
-};
