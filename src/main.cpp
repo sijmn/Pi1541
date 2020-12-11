@@ -1867,6 +1867,21 @@ void DisplayMessage(int x, int y, bool LCD, const char* message, u32 textColour,
 #endif
 }
 
+int y_pos = 184;
+void PrintFormat(const char* format, ...)
+{
+	va_list args;
+	va_start(args, format);
+	vsnprintf(tempBuffer, tempBufferSize, format, args);
+	va_end(args);
+
+	if (y_pos + 96 >= screenHeight) {
+		screen.ScrollUp(8);
+		y_pos -= 16;
+	}
+	screen.PrintText(false, 0, y_pos+=16, tempBuffer, COLOUR_WHITE, COLOUR_BLACK);
+}
+
 extern "C"
 {
 	void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)

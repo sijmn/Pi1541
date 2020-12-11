@@ -36,6 +36,7 @@ public:
 	void Clear(RGBA colour);
 
 	void ScrollArea(u32 x1, u32 y1, u32 x2, u32 y2);
+	void ScrollUp(u32 pixels);
 
 	void WriteChar(bool petscii, u32 x, u32 y, unsigned char c, RGBA colour);
 	u32 PrintText(bool petscii, u32 xPos, u32 yPos, char *ptr, RGBA TxtColour = RGBA(0xff, 0xff, 0xff, 0xff), RGBA BkColour = RGBA(0, 0, 0, 0xFF), bool measureOnly = false, u32* width = 0, u32* height = 0);

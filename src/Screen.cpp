@@ -188,6 +188,16 @@ void Screen::ScrollArea(u32 x1, u32 y1, u32 x2, u32 y2)
 	}
 }
 
+void Screen::ScrollUp(u32 pixels)
+{
+	memcpy(
+		framebuffer,
+		framebuffer + pixels * 2 * pitch,
+		(height - pixels * 2) * pitch
+	);
+	DrawRectangle(0, height - pixels, width, height, RGBA(0, 0, 0, 0xFF));
+}
+
 void Screen::Clear(RGBA colour)
 {
 	DrawRectangle(0, 0, width, height, colour);
