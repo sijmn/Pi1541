@@ -42,7 +42,7 @@ struct IcmpPacket
 		i += header.Serialize(buffer);
 		i += payload.Serialize(buffer + i);
 
-		uint16_t checksum = internetChecksum(buffer, i);
+		uint16_t checksum = InternetChecksum(buffer, i);
 		buffer[2] = checksum;
 		buffer[3] = checksum >> 8;
 

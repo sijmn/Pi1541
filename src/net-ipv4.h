@@ -64,7 +64,7 @@ struct Ipv4Header
 		buffer[i++] = destinationIp >> 8;
 		buffer[i++] = destinationIp;
 
-		headerChecksum = internetChecksum(buffer, i);
+		headerChecksum = InternetChecksum(buffer, i);
 		buffer[10] = headerChecksum;
 		buffer[11] = headerChecksum >> 8;
 

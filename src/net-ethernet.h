@@ -69,7 +69,7 @@ struct EthernetFrame
 			buffer[i++] = 0;
 		}
 
-		crc = crc32(buffer, i);
+		crc = Crc32(buffer, i);
 
 		buffer[i++] = crc;
 		buffer[i++] = crc >> 8;

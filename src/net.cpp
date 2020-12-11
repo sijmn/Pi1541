@@ -1,5 +1,102 @@
 #include "net.h"
-#include <unordered_map>
+#include "net-ethernet.h"
+#include "net-ipv4.h"
+#include "net-arp.h"
+#include "net-icmp.h"
+
+#include "types.h"
+#include <uspi.h>
+
+const uint32_t Ipv4Address = 0x0A00000B;
+
+//
+// ARP
+//
+void SendArpPacket(ArpOperation operation,
+					MacAddress targetMac,
+					MacAddress senderMac,
+					uint32_t targetIp,
+					uint32_t senderIp)
+{
+	Ipv4ArpPacket arp(operation);
+	arp.targetMac = targetMac;
+	arp.senderMac = senderMac;
+	arp.targetIp = targetIp;
+	arp.senderIp = senderIp;
+
+	EthernetFrame<decltype(arp)> frame(ETHERTYPE_ARP, arp);
+	frame.header.macDestination = targetMac;
+	frame.header.macSource = senderMac;
+
+	uint8_t buffer[USPI_FRAME_BUFFER_SIZE];
+	const auto size = frame.Serialize(buffer);
+	USPiSendFrame(buffer, size);
+}
+
+void SendArpRequest(MacAddress targetMac,
+					MacAddress senderMac,
+					uint32_t targetIp,
+					uint32_t senderIp)
+{
+	SendArpPacket(ARP_OPERATION_REQUEST, targetMac, senderMac, targetIp, senderIp);
+}
+
+void SendArpReply(MacAddress targetMac,
+					MacAddress senderMac,
+					uint32_t targetIp,
+					uint32_t senderIp)
+{
+	SendArpPacket(ARP_OPERATION_REPLY, targetMac, senderMac, targetIp, senderIp);
+}
+
+void SendArpAnnouncement(MacAddress mac, uint32_t ip)
+{
+	SendArpReply(MacBroadcast, mac, ip, ip);
+}
+
+void HandleArpFrame(uint8_t* buffer)
+{
+	const auto macAddress = GetMacAddress();
+	const auto ipAddress = 0x0A00000B;
+
+	const auto frame = EthernetFrame<Ipv4ArpPacket>::Deserialize(buffer);
+	const auto arp = frame.payload;
+
+	if (arp.hardwareType == 1 &&
+		arp.protocolType == ETHERTYPE_IPV4 &&
+		arp.operation == ARP_OPERATION_REQUEST &&
+		arp.targetIp == ipAddress)
+	{
+		SendArpReply(arp.senderMac, macAddress, arp.senderIp, ipAddress);
+	}
+	else if (arp.hardwareType == 1 &&
+			arp.protocolType == ETHERTYPE_IPV4 &&
+			arp.operation == ARP_OPERATION_REPLY &&
+			arp.targetIp == ipAddress &&
+			arp.targetMac == macAddress)
+	{
+		ArpTable.insert(std::make_pair(arp.senderIp, arp.senderMac));
+	}
+}
+
+
+//
+// ICMP
+//
+void SendIcmpEchoRequest(MacAddress mac, uint32_t ip)
+{
+	IcmpEchoRequest<int> pingPacket(0);
+	IcmpPacket<decltype(pingPacket)> icmpPacket(8, 0, pingPacket);
+	Ipv4Packet<decltype(icmpPacket)> ipv4Packet(1, Ipv4Address, ip, icmpPacket);
+
+	EthernetFrame<decltype(ipv4Packet)> frame(ETHERTYPE_IPV4, ipv4Packet);
+	frame.header.macDestination = mac;
+	frame.header.macSource = GetMacAddress();
+
+	uint8_t buffer[USPI_FRAME_BUFFER_SIZE];
+	size_t size = frame.Serialize(buffer);
+	USPiSendFrame(buffer, size);
+}
 
 //
 // Helpers
@@ -71,7 +168,7 @@ static const std::uint32_t crcTab32[256] = {
 	0xB40BBE37ul, 0xC30C8EA1ul, 0x5A05DF1Bul, 0x2D02EF8Dul
 };
 
-std::uint32_t crc32(const std::uint8_t *buffer, std::size_t size) {
+std::uint32_t Crc32(const std::uint8_t *buffer, std::size_t size) {
 	std::uint32_t crc = 0xFFFFFFFFul;
 
 	for (std::size_t a = 0; a < size; a++)
@@ -83,7 +180,7 @@ std::uint32_t crc32(const std::uint8_t *buffer, std::size_t size) {
 	return crc ^ 0xFFFFFFFFul;
 }
 
-std::uint16_t internetChecksum(const void* data, std::size_t size)
+std::uint16_t InternetChecksum(const void* data, std::size_t size)
 {
 	std::uint32_t sum = 0;
 	while (size > 1) {
@@ -103,3 +200,18 @@ std::uint16_t internetChecksum(const void* data, std::size_t size)
 
 	return ~sum;
 }
+
+MacAddress GetMacAddress()
+{
+	static MacAddress macAddress{0};
+
+	if (macAddress == MacAddress{0})
+	{
+		USPiGetMACAddress(macAddress.data());
+	}
+
+	return macAddress;
+}
+
+MacAddress MacBroadcast{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+std::unordered_map<std::uint32_t, MacAddress> ArpTable;

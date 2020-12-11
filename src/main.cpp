@@ -18,7 +18,7 @@
 
 #include <algorithm>
 #include <array>
-#include <numeric> 
+#include <numeric>
 #include <unordered_map>
 
 #include "defs.h"
@@ -1943,7 +1943,6 @@ extern "C"
 
 		const auto ipAddress = 0x0A00000B;
 		uint8_t ipBuffer[USPI_FRAME_BUFFER_SIZE];
-		std::unordered_map<std::uint32_t, std::array<std::uint8_t, 6>> arpTable;
 
 		if (USPiEthernetAvailable()) {
 			std::array<std::uint8_t, 6> macAddress;
@@ -1952,24 +1951,8 @@ extern "C"
 			snprintf(tempBuffer, tempBufferSize, "Ethernet found");
 			screen.PrintText(false, 0, y_pos+=16, tempBuffer, COLOUR_WHITE, COLOUR_BLACK);
 
-
 			// Send an ARP announcement
-			{
-				Ipv4ArpPacket arp(ARP_OPERATION_REPLY);
-
-				arp.senderMac = macAddress;
-				arp.senderIp = ipAddress;
-
-				arp.targetMac.fill(0);
-				arp.targetIp = ipAddress;
-
-				EthernetFrame<decltype(arp)> frame(ETHERTYPE_ARP, arp);
-				frame.header.macDestination.fill(0xFF);  // Broadcast
-				frame.header.macSource = macAddress;
-
-				size_t size = frame.Serialize(ipBuffer);
-				USPiSendFrame(ipBuffer, size);
-			}
+			SendArpAnnouncement(macAddress, ipAddress);
 
 			while (true)
 			{
@@ -1977,41 +1960,17 @@ extern "C"
 				if (!USPiReceiveFrame(ipBuffer, &size))
 				{
 					const auto targetIp = 0x0A00000A;
-					const auto targetMacIter = arpTable.find(targetIp);
+					const auto targetMacIter = ArpTable.find(targetIp);
 
-					if (targetMacIter != arpTable.end())
+					if (targetMacIter != ArpTable.end())
 					{
 						const auto targetMac = targetMacIter->second;
-
-						int value = 1337;
-						IcmpEchoRequest<int> ping(value);
-						IcmpPacket<decltype(ping)> icmp(8, 0, ping);
-						Ipv4Packet<decltype(icmp)> ip(1, ipAddress, targetIp, icmp);
-
-						EthernetFrame<decltype(ip)> frame(ETHERTYPE_IPV4, ip);
-						frame.header.macDestination = targetMac;
-						frame.header.macSource = macAddress;
-
-						size_t size = frame.Serialize(ipBuffer);
-						USPiSendFrame(ipBuffer, size);
+						SendIcmpEchoRequest(targetMac, targetIp);
 					}
 					else
 					{
-						// Send ARP request
-						Ipv4ArpPacket arp(ARP_OPERATION_REQUEST);
-
-						arp.senderMac = macAddress;
-						arp.senderIp = ipAddress;
-
-						arp.targetMac.fill(0);
-						arp.targetIp = 0x0A00000A;
-
-						EthernetFrame<decltype(arp)> frame(ETHERTYPE_ARP, arp);
-						frame.header.macDestination.fill(0xFF);  // Broadcast
-						frame.header.macSource = macAddress;
-
-						size_t size = frame.Serialize(ipBuffer);
-						USPiSendFrame(ipBuffer, size);
+						// Send an ARP request to find the MAC address belonging to this IP.
+						SendArpRequest(MacBroadcast, macAddress, targetIp, ipAddress);
 					}
 
 					MsDelay(1000);
@@ -2030,36 +1989,7 @@ extern "C"
 
 				if (header.type == ETHERTYPE_ARP)
 				{
-					auto frame = EthernetFrame<Ipv4ArpPacket>::Deserialize(ipBuffer);
-					const auto arp = frame.payload;
-
-					if (arp.hardwareType == 1 &&
-						arp.protocolType == ETHERTYPE_IPV4 &&
-						arp.operation == ARP_OPERATION_REQUEST &&
-						arp.targetIp == ipAddress)
-					{
-						Ipv4ArpPacket arpReply(ARP_OPERATION_REPLY);
-
-						arpReply.targetMac = arp.senderMac;
-						arpReply.senderMac = macAddress;
-
-						arpReply.targetIp = arp.senderIp;
-						arpReply.senderIp = ipAddress;
-
-						EthernetFrame<decltype(arpReply)> frame(ETHERTYPE_ARP, arpReply);
-						frame.header.macSource = macAddress;
-
-						size_t size = frame.Serialize(ipBuffer);
-						USPiSendFrame(ipBuffer, size);
-					}
-					else if (arp.hardwareType == 1 &&
-							arp.protocolType == ETHERTYPE_IPV4 &&
-							arp.operation == ARP_OPERATION_REPLY &&
-							arp.targetIp == ipAddress &&
-							arp.targetMac == macAddress)
-					{
-						arpTable.insert(std::make_pair(arp.senderIp, arp.senderMac));
-					}
+					HandleArpFrame(ipBuffer);
 				}
 			}
 		}
