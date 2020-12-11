@@ -15,10 +15,9 @@ enum ArpOperation {
 	ARP_OPERATION_REPLY = 2,
 };
 
-typedef std::array<std::uint8_t, 6> MacAddress;
+typedef std::array<uint8_t, 6> MacAddress;
 
-
-void HandleArpFrame(std::uint8_t* buffer);
+void HandleArpFrame(uint8_t* buffer);
 void SendArpPacket(ArpOperation operation,
 					MacAddress targetMac,
 					MacAddress senderMac,
@@ -34,13 +33,18 @@ void SendArpReply(MacAddress targetMac,
 					uint32_t targetIp);
 void SendArpAnnouncement(MacAddress mac, uint32_t ip);
 
+uint64_t HandleIpv4Frame(const uint8_t* buffer);
+
 void SendIcmpEchoRequest(MacAddress mac, uint32_t ip);
+uint64_t HandleIcmpFrame(const uint8_t* buffer);
 
 std::uint32_t Crc32(const std::uint8_t* buffer, std::size_t size);
 std::uint16_t InternetChecksum(const void* data, std::size_t size);
 MacAddress GetMacAddress();
 
-extern MacAddress MacBroadcast;
+extern const MacAddress MacBroadcast;
+extern const uint32_t Ipv4Address;
+
 extern std::unordered_map<std::uint32_t, MacAddress> ArpTable;
 
 struct UdpDatagramHeader

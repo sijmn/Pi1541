@@ -1941,7 +1941,6 @@ extern "C"
 			MsDelay(1000);
 		}
 
-		const auto ipAddress = 0x0A00000B;
 		uint8_t ipBuffer[USPI_FRAME_BUFFER_SIZE];
 
 		if (USPiEthernetAvailable()) {
@@ -1952,14 +1951,15 @@ extern "C"
 			screen.PrintText(false, 0, y_pos+=16, tempBuffer, COLOUR_WHITE, COLOUR_BLACK);
 
 			// Send an ARP announcement
-			SendArpAnnouncement(macAddress, ipAddress);
+			SendArpAnnouncement(macAddress, Ipv4Address);
 
 			while (true)
 			{
 				size_t size;
 				if (!USPiReceiveFrame(ipBuffer, &size))
 				{
-					const auto targetIp = 0x0A00000A;
+					/*
+					const auto targetIp = 0xC0A80128;
 					const auto targetMacIter = ArpTable.find(targetIp);
 
 					if (targetMacIter != ArpTable.end())
@@ -1970,10 +1970,11 @@ extern "C"
 					else
 					{
 						// Send an ARP request to find the MAC address belonging to this IP.
-						SendArpRequest(MacBroadcast, macAddress, targetIp, ipAddress);
+						SendArpRequest(MacBroadcast, macAddress, targetIp, Ipv4Address);
 					}
+					*/
 
-					MsDelay(1000);
+					MsDelay(100);
 					continue;
 				}
 
@@ -1990,6 +1991,12 @@ extern "C"
 				if (header.type == ETHERTYPE_ARP)
 				{
 					HandleArpFrame(ipBuffer);
+				}
+				else if (header.type == ETHERTYPE_IPV4)
+				{
+					uint64_t debug = HandleIpv4Frame(ipBuffer);
+					snprintf(tempBuffer, tempBufferSize, "Debug: %016llx", debug);
+					screen.PrintText(false, 0, y_pos+=16, tempBuffer, COLOUR_WHITE, COLOUR_BLACK);
 				}
 			}
 		}

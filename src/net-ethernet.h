@@ -7,14 +7,18 @@ struct EthernetFrameHeader
 	MacAddress macSource;
 	std::uint16_t type;
 
+	EthernetFrameHeader() {}
+
 	EthernetFrameHeader(std::uint16_t type) :
 		macDestination{255, 255, 255, 255, 255, 255},
 		macSource{0, 0, 0, 0, 0, 0},
 		type(type)
-	{
-	}
+	{}
 
-	EthernetFrameHeader() : EthernetFrameHeader(0) {}
+	EthernetFrameHeader(MacAddress macDestination, MacAddress macSource, uint16_t type) :
+		macDestination(macDestination), macSource(macSource), type(type)
+	{}
+
 
 	std::size_t Serialize(uint8_t* buffer)
 	{
@@ -32,7 +36,7 @@ struct EthernetFrameHeader
 		return i;
 	}
 
-	static EthernetFrameHeader Deserialize(uint8_t* buffer)
+	static EthernetFrameHeader Deserialize(const uint8_t* buffer)
 	{
 		EthernetFrameHeader self;
 		memcpy(self.macDestination.data(), buffer + 0, self.macDestination.size());
@@ -52,9 +56,16 @@ struct EthernetFrame
 
 	EthernetFrame() {}
 
-	EthernetFrame(std::uint16_t type, T payload) : header(type), payload(payload), crc(0)
-	{
-	}
+	EthernetFrame(std::uint16_t type, T payload) : header(type), payload(payload)
+	{}
+
+	EthernetFrame(
+		MacAddress macDestination,
+		MacAddress macSource,
+		std::uint16_t type,
+		T payload
+	) : header(macDestination, macSource, type), payload(payload)
+	{}
 
 	std::size_t Serialize(uint8_t* buffer)
 	{
@@ -79,7 +90,7 @@ struct EthernetFrame
 		return i;
 	}
 
-	static EthernetFrame<T> Deserialize(uint8_t* buffer)
+	static EthernetFrame<T> Deserialize(const uint8_t* buffer)
 	{
 		EthernetFrame<T> self;
 

@@ -51,7 +51,7 @@ struct Ipv4ArpPacket
 		return 28;
 	}
 
-	static Ipv4ArpPacket Deserialize(uint8_t* buffer)
+	static Ipv4ArpPacket Deserialize(const uint8_t* buffer)
 	{
 		Ipv4ArpPacket self;
 

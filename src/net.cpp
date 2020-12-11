@@ -7,8 +7,6 @@
 #include "types.h"
 #include <uspi.h>
 
-const uint32_t Ipv4Address = 0x0A00000B;
-
 //
 // ARP
 //
@@ -57,7 +55,6 @@ void SendArpAnnouncement(MacAddress mac, uint32_t ip)
 void HandleArpFrame(uint8_t* buffer)
 {
 	const auto macAddress = GetMacAddress();
-	const auto ipAddress = 0x0A00000B;
 
 	const auto frame = EthernetFrame<Ipv4ArpPacket>::Deserialize(buffer);
 	const auto arp = frame.payload;
@@ -65,18 +62,38 @@ void HandleArpFrame(uint8_t* buffer)
 	if (arp.hardwareType == 1 &&
 		arp.protocolType == ETHERTYPE_IPV4 &&
 		arp.operation == ARP_OPERATION_REQUEST &&
-		arp.targetIp == ipAddress)
+		arp.targetIp == Ipv4Address)
 	{
-		SendArpReply(arp.senderMac, macAddress, arp.senderIp, ipAddress);
+		SendArpReply(arp.senderMac, macAddress, arp.senderIp, Ipv4Address);
 	}
 	else if (arp.hardwareType == 1 &&
 			arp.protocolType == ETHERTYPE_IPV4 &&
 			arp.operation == ARP_OPERATION_REPLY &&
-			arp.targetIp == ipAddress &&
+			arp.targetIp == Ipv4Address &&
 			arp.targetMac == macAddress)
 	{
 		ArpTable.insert(std::make_pair(arp.senderIp, arp.senderMac));
 	}
+}
+
+//
+// IPv4
+//
+uint64_t HandleIpv4Frame(const uint8_t* buffer)
+{
+	const auto frame = EthernetFrame<Ipv4Header>::Deserialize(buffer);
+	const auto header = frame.payload;
+
+	if (header.version != 4) return 0x4;
+	if (header.ihl != 5) return 0x8; // Not supported
+	if (header.destinationIp != Ipv4Address) return 0x10 | std::uint64_t{header.destinationIp} << 32;
+	if (header.fragmentOffset != 0) return 0x20; // TODO Support this
+
+	if (header.protocol == IP_PROTO_ICMP)
+	{
+		return HandleIcmpFrame(buffer) | 0x2;
+	}
+	return 0x0;
 }
 
 
@@ -96,6 +113,51 @@ void SendIcmpEchoRequest(MacAddress mac, uint32_t ip)
 	uint8_t buffer[USPI_FRAME_BUFFER_SIZE];
 	size_t size = frame.Serialize(buffer);
 	USPiSendFrame(buffer, size);
+}
+
+uint64_t HandleIcmpFrame(const uint8_t* buffer)
+{
+	const auto frame = EthernetFrame<Ipv4Packet<IcmpPacketHeader>>::Deserialize(buffer);
+	const auto packetHeader = frame.payload.payload;
+
+	if (packetHeader.type == ICMP_ECHO_REQUEST)
+	{
+		// TODO This should not be hardcoded lol
+		typedef EthernetFrame<Ipv4Packet<IcmpPacket<IcmpEchoRequest<uint8_t[56]>>>> Frame;
+		auto frameReq = Frame::Deserialize(buffer);
+		
+		auto echoReq = frameReq.payload.payload.payload;
+
+		IcmpEchoResponse<uint8_t[56]> echoResp;
+		echoResp.identifier = echoReq.identifier;
+		echoResp.sequenceNumber = echoReq.sequenceNumber;
+		memcpy(echoResp.data, echoReq.data, 56);
+
+		const auto sourceIp = frame.payload.header.sourceIp;
+
+		IcmpPacket<decltype(echoResp)> icmpResp(ICMP_ECHO_REPLY, 0, echoResp);
+
+		Ipv4Packet<decltype(icmpResp)> ipv4Resp(
+			IP_PROTO_ICMP,
+			Ipv4Address,
+			sourceIp,
+			icmpResp
+		);
+
+		EthernetFrame<decltype(ipv4Resp)> frameResp(
+			frame.header.macSource,
+			GetMacAddress(),
+			ETHERTYPE_IPV4,
+			ipv4Resp
+		);
+
+		uint8_t bufferResp[USPI_FRAME_BUFFER_SIZE];
+		const auto size = frameResp.Serialize(bufferResp);
+		USPiSendFrame(bufferResp, size);
+
+		return 0x1;
+	}
+	return 0x0 | std::uint64_t{packetHeader.type} << 32;
 }
 
 //
@@ -213,5 +275,7 @@ MacAddress GetMacAddress()
 	return macAddress;
 }
 
-MacAddress MacBroadcast{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+const uint32_t Ipv4Address = 0xC0A80164;
+const MacAddress MacBroadcast{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+
 std::unordered_map<std::uint32_t, MacAddress> ArpTable;
