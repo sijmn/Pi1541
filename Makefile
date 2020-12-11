@@ -4,7 +4,7 @@ OBJS	= armc-start.o armc-cstartup.o armc-cstubs.o armc-cppstubs.o \
 	Drive.o Pi1541.o DiskImage.o iec_bus.o iec_commands.o m6502.o m6522.o \
 	gcr.o prot.o lz.o emmc.o diskio.o options.o Screen.o SSD1306.o ScreenLCD.o \
 	Timer.o FileBrowser.o DiskCaddy.o ROMs.o InputMappings.o xga_font_data.o m8520.o wd177x.o Pi1581.o SpinLock.o \
-	net.o
+	net.o net-tftp.o
 
 SRCDIR   = src
 OBJS    := $(addprefix $(SRCDIR)/, $(OBJS))

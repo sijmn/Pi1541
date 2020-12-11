@@ -1,4 +1,5 @@
 #pragma once
+#include "net.h"
 
 struct Ipv4ArpPacket
 {
