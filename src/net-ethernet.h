@@ -19,6 +19,10 @@ struct EthernetFrameHeader
 		macDestination(macDestination), macSource(macSource), type(type)
 	{}
 
+	constexpr static std::size_t SerializedLength()
+	{
+		return sizeof(EthernetFrameHeader);
+	}
 
 	std::size_t Serialize(uint8_t* buffer)
 	{

@@ -15,11 +15,12 @@
 //
 // ARP
 //
-void SendArpPacket(ArpOperation operation,
-					MacAddress targetMac,
-					MacAddress senderMac,
-					uint32_t targetIp,
-					uint32_t senderIp)
+void SendArpPacket(
+	ArpOperation operation,
+	MacAddress targetMac,
+	MacAddress senderMac,
+	uint32_t targetIp,
+	uint32_t senderIp)
 {
 	Ipv4ArpPacket arp(operation);
 	arp.targetMac = targetMac;
@@ -36,18 +37,14 @@ void SendArpPacket(ArpOperation operation,
 	USPiSendFrame(buffer, size);
 }
 
-void SendArpRequest(MacAddress targetMac,
-					MacAddress senderMac,
-					uint32_t targetIp,
-					uint32_t senderIp)
+void SendArpRequest(
+	MacAddress targetMac, MacAddress senderMac, uint32_t targetIp, uint32_t senderIp)
 {
 	SendArpPacket(ARP_OPERATION_REQUEST, targetMac, senderMac, targetIp, senderIp);
 }
 
-void SendArpReply(MacAddress targetMac,
-					MacAddress senderMac,
-					uint32_t targetIp,
-					uint32_t senderIp)
+void SendArpReply(
+	MacAddress targetMac, MacAddress senderMac, uint32_t targetIp, uint32_t senderIp)
 {
 	SendArpPacket(ARP_OPERATION_REPLY, targetMac, senderMac, targetIp, senderIp);
 }
@@ -116,11 +113,12 @@ void HandleUdpFrame(const uint8_t* buffer)
 	const auto header = frame.payload.payload;
 
 	uint8_t* data = (uint8_t*)malloc(header.length);
-	memcpy(
-		data,
-		buffer + sizeof(EthernetFrameHeader) + sizeof(Ipv4Header) + sizeof(UdpDatagramHeader),
-		header.length
-	);
+	const auto size =
+		buffer +
+		EthernetFrameHeader::SerializedLength() +
+		Ipv4Header::SerializedLength() +
+		UdpDatagramHeader::SerializedLength();
+	memcpy(data, size, header.length);
 
 	if (header.destinationPort == 69) // nice
 	{

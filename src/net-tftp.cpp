@@ -94,7 +94,7 @@ static std::unique_ptr<TftpPacket> handleTftpData(const uint8_t* data, size_t le
 		return std::unique_ptr<TftpErrorPacket>(new TftpErrorPacket(0, "io error"));
 	}
 
-	if (packet.data.size() < 512)
+	if (packet.data.size() < TFTP_BLOCK_SIZE)
 	{
 		// Close the file for the last packet.
 		f_close(&outFile);
