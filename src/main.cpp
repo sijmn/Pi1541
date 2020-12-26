@@ -369,14 +369,14 @@ void InitialiseLCD()
 
 void updateNetwork()
 {
-	size_t size;
+	unsigned int size = 0;
 	uint8_t ipBuffer[USPI_FRAME_BUFFER_SIZE];
 	if (!USPiEthernetAvailable() || !USPiReceiveFrame(ipBuffer, &size))
 	{
 		return;
 	}
 
-	auto header = EthernetFrameHeader::Deserialize(ipBuffer);
+	auto ethernetHeader = EthernetFrameHeader::Deserialize(ipBuffer);
 
 	static bool announcementSent = false;
 	if (!announcementSent)
@@ -385,13 +385,13 @@ void updateNetwork()
 		announcementSent = true;
 	}
 
-	switch (header.type)
+	switch (ethernetHeader.type)
 	{
 	case ETHERTYPE_ARP:
-		HandleArpFrame(ipBuffer);
+		HandleArpFrame(ethernetHeader, ipBuffer + ethernetHeader.SerializedLength());
 		break;
 	case ETHERTYPE_IPV4:
-		HandleIpv4Frame(ipBuffer);
+		HandleIpv4Packet(ethernetHeader, ipBuffer + ethernetHeader.SerializedLength());
 		break;
 	}
 }

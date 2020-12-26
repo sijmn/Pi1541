@@ -24,6 +24,20 @@ struct Ipv4ArpPacket
 		operation(operation)
 	{}
 
+	constexpr std::size_t SerializedLength() const
+	{
+		return
+			sizeof(hardwareType) +
+			sizeof(protocolType) +
+			sizeof(hardwareAddressLength) +
+			sizeof(protocolAddressLength) +
+			sizeof(operation) +
+			senderMac.size() +
+			sizeof(senderIp) +
+			targetMac.size() +
+			sizeof(targetIp);
+	}
+
 	std::size_t Serialize(std::uint8_t* buffer)
 	{
 		buffer[0] = hardwareType >> 8;
@@ -34,7 +48,7 @@ struct Ipv4ArpPacket
 		buffer[5] = protocolAddressLength;
 		buffer[6] = operation >> 8;
 		buffer[7] = operation;
-		
+
 		memcpy(buffer + 8, senderMac.data(), 6);
 
 		buffer[14] = senderIp >> 24;
@@ -71,5 +85,4 @@ struct Ipv4ArpPacket
 
 		return self;
 	}
-} __attribute__((packed));
-
+};

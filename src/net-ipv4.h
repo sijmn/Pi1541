@@ -10,14 +10,14 @@ enum IpProtocols
 
 struct Ipv4Header
 {
-	unsigned int version : 4;
-	unsigned int ihl : 4;
-	unsigned int dscp : 6;
-	unsigned int ecn : 2;
+	uint8_t version;
+	uint8_t ihl;
+	uint8_t dscp;
+	uint8_t ecn;
 	uint16_t totalLength;
 	uint16_t identification;
-	unsigned int flags : 3;
-	unsigned int fragmentOffset : 13;
+	uint8_t flags;
+	uint16_t fragmentOffset;
 	uint8_t ttl;
 	uint8_t protocol;
 	uint16_t headerChecksum;
@@ -47,10 +47,11 @@ struct Ipv4Header
 
 	static constexpr size_t SerializedLength()
 	{
-		return sizeof(Ipv4Header);
+		// Hardcoded because of bitfields.
+		return 20;
 	}
-	
-	size_t Serialize(uint8_t* buffer)
+
+	size_t Serialize(uint8_t* buffer) const
 	{
 		size_t i = 0;
 
@@ -65,9 +66,9 @@ struct Ipv4Header
 		buffer[i++] = ttl;
 		buffer[i++] = protocol;
 
-		headerChecksum = 0;
-		buffer[i++] = headerChecksum;
-		buffer[i++] = headerChecksum >> 8;
+		// Zero the checksum before calculating it
+		buffer[i++] = 0;
+		buffer[i++] = 0 >> 8;
 
 		buffer[i++] = sourceIp >> 24;
 		buffer[i++] = sourceIp >> 16;
@@ -78,9 +79,9 @@ struct Ipv4Header
 		buffer[i++] = destinationIp >> 8;
 		buffer[i++] = destinationIp;
 
-		headerChecksum = InternetChecksum(buffer, i);
-		buffer[10] = headerChecksum;
-		buffer[11] = headerChecksum >> 8;
+		uint16_t checksum = InternetChecksum(buffer, i);
+		buffer[10] = checksum;
+		buffer[11] = checksum >> 8;
 
 		return i;
 	}
@@ -109,36 +110,4 @@ struct Ipv4Header
 
 		return self;
 	}
-} __attribute__((packed));
-
-template<class T>
-struct Ipv4Packet
-{
-	Ipv4Header header;
-	T payload;
-
-	Ipv4Packet() {}
-
-	Ipv4Packet(uint8_t protocol, uint32_t sourceIp, uint32_t destinationIp, T payload) :
-		header(protocol, sourceIp, destinationIp, sizeof(Ipv4Packet<T>)),
-		payload(payload)
-	{
-	}
-
-	size_t Serialize(uint8_t* buffer)
-	{
-		size_t i = 0;
-		i += header.Serialize(buffer);
-		i += payload.Serialize(buffer + i);
-		return i;
-	}
-
-	static Ipv4Packet<T> Deserialize(const uint8_t* buffer)
-	{
-		Ipv4Packet<T> self;
-		self.header = Ipv4Header::Deserialize(buffer);
-		self.payload = T::Deserialize(buffer + sizeof(Ipv4Header));
-		return self;
-	}
-
-} __attribute__((packed));
+};

@@ -18,7 +18,10 @@ struct TftpPacket
 
 	TftpPacket(uint16_t opcode) : opcode(opcode) {}
 
-	virtual size_t SerializedLength() const = 0;
+	virtual size_t SerializedLength() const {
+		return sizeof(opcode);
+	}
+
 	virtual size_t Serialize(uint8_t* buffer) const = 0;
 };
 
@@ -29,8 +32,8 @@ struct TftpWriteReadRequestPacket : public TftpPacket
 
 	TftpWriteReadRequestPacket(uint16_t opcode) : TftpPacket(opcode) {}
 
-	constexpr size_t SerializedLength() override {
-		return sizeof(opcode) + filename.size() + 1 + mode.size() + 1;
+	size_t SerializedLength() const override {
+		return TftpPacket::SerializedLength() + filename.size() + 1 + mode.size() + 1;
 	}
 
 	size_t Serialize(uint8_t* buffer) const override {
@@ -73,9 +76,9 @@ struct TftpErrorPacket : public TftpPacket
 		TftpPacket(TFTP_OP_ERROR), errorCode(errorCode), message(message)
 	{}
 
-	constexpr size_t SerializedLength() const override
+	size_t SerializedLength() const override
 	{
-		return sizeof(opcode) + sizeof(errorCode) + message.size() + 1;
+		return TftpPacket::SerializedLength() + sizeof(errorCode) + message.size() + 1;
 	}
 
 	size_t Serialize(uint8_t* buffer) const
@@ -85,7 +88,7 @@ struct TftpErrorPacket : public TftpPacket
 		buffer[i++] = opcode;
 		buffer[i++] = errorCode >> 8;
 		buffer[i++] = errorCode;
-		
+
 		i += message.copy(reinterpret_cast<char*>(buffer + i), message.size());
 		buffer[i++] = 0;
 
@@ -103,9 +106,9 @@ struct TftpAcknowledgementPacket : public TftpPacket
 		TftpPacket(TFTP_OP_ACKNOWLEDGEMENT), blockNumber(blockNumber)
 	{}
 
-	constexpr size_t SerializedLength() override
+	size_t SerializedLength() const override
 	{
-		return sizeof(opcode) + sizeof(blockNumber);
+		return TftpPacket::SerializedLength() + sizeof(blockNumber);
 	}
 
 	size_t Serialize(uint8_t* buffer) const override

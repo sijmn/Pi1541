@@ -22,18 +22,18 @@ void SendArpPacket(
 	uint32_t targetIp,
 	uint32_t senderIp)
 {
-	Ipv4ArpPacket arp(operation);
-	arp.targetMac = targetMac;
-	arp.senderMac = senderMac;
-	arp.targetIp = targetIp;
-	arp.senderIp = senderIp;
+	Ipv4ArpPacket arpPacket(operation);
+	arpPacket.targetMac = targetMac;
+	arpPacket.senderMac = senderMac;
+	arpPacket.targetIp = targetIp;
+	arpPacket.senderIp = senderIp;
 
-	EthernetFrame<decltype(arp)> frame(ETHERTYPE_ARP, arp);
-	frame.header.macDestination = targetMac;
-	frame.header.macSource = senderMac;
+	EthernetFrameHeader ethernetHeader(senderMac, targetMac, ETHERTYPE_ARP);
 
 	uint8_t buffer[USPI_FRAME_BUFFER_SIZE];
-	const auto size = frame.Serialize(buffer);
+	size_t size = 0;
+	size += ethernetHeader.Serialize(buffer + size);
+	size += arpPacket.Serialize(buffer + size);
 	USPiSendFrame(buffer, size);
 }
 
@@ -54,79 +54,75 @@ void SendArpAnnouncement(MacAddress mac, uint32_t ip)
 	SendArpReply(MacBroadcast, mac, ip, ip);
 }
 
-void HandleArpFrame(uint8_t* buffer)
+void HandleArpFrame(const EthernetFrameHeader ethernetHeader, uint8_t* buffer)
 {
 	const auto macAddress = GetMacAddress();
+	const auto arpPacket = Ipv4ArpPacket::Deserialize(buffer);
 
-	const auto frame = EthernetFrame<Ipv4ArpPacket>::Deserialize(buffer);
-	const auto arp = frame.payload;
-
-	if (arp.hardwareType == 1 &&
-		arp.protocolType == ETHERTYPE_IPV4 &&
-		arp.operation == ARP_OPERATION_REQUEST &&
-		arp.targetIp == Ipv4Address)
+	if (
+		arpPacket.hardwareType == 1 &&
+		arpPacket.protocolType == ETHERTYPE_IPV4 &&
+		arpPacket.operation == ARP_OPERATION_REQUEST &&
+		arpPacket.targetIp == Ipv4Address)
 	{
-		SendArpReply(arp.senderMac, macAddress, arp.senderIp, Ipv4Address);
+		SendArpReply(arpPacket.senderMac, macAddress, arpPacket.senderIp, Ipv4Address);
 	}
-	else if (arp.hardwareType == 1 &&
-			arp.protocolType == ETHERTYPE_IPV4 &&
-			arp.operation == ARP_OPERATION_REPLY &&
-			arp.targetIp == Ipv4Address &&
-			arp.targetMac == macAddress)
+
+	else if (
+		arpPacket.hardwareType == 1 &&
+		arpPacket.protocolType == ETHERTYPE_IPV4 &&
+		arpPacket.operation == ARP_OPERATION_REPLY &&
+		arpPacket.targetIp == Ipv4Address &&
+		arpPacket.targetMac == macAddress)
 	{
-		ArpTable.insert(std::make_pair(arp.senderIp, arp.senderMac));
+		ArpTable.insert(std::make_pair(arpPacket.senderIp, arpPacket.senderMac));
 	}
 }
 
 //
 // IPv4
 //
-void HandleIpv4Frame(const uint8_t* buffer)
+void HandleIpv4Packet(const EthernetFrameHeader ethernetHeader, const uint8_t* buffer)
 {
-	const auto frame = EthernetFrame<Ipv4Header>::Deserialize(buffer);
-	const auto header = frame.payload;
+	const auto ipv4Header = Ipv4Header::Deserialize(buffer);
 
 	// Update ARP table
-	ArpTable.insert(std::make_pair(frame.payload.sourceIp, frame.header.macSource));
+	ArpTable.insert(std::make_pair(ipv4Header.sourceIp, ethernetHeader.macSource));
 
-	if (header.version != 4) return;
-	if (header.ihl != 5) return; // Not supported
-	if (header.destinationIp != Ipv4Address) return;
-	if (header.fragmentOffset != 0) return; // TODO Support this
+	if (ipv4Header.version != 4) return;
+	if (ipv4Header.ihl != 5) return; // Not supported
+	if (ipv4Header.destinationIp != Ipv4Address) return;
+	if (ipv4Header.fragmentOffset != 0) return; // TODO Support this
 
-	if (header.protocol == IP_PROTO_ICMP)
+	if (ipv4Header.protocol == IP_PROTO_ICMP)
 	{
 		HandleIcmpFrame(buffer);
 	}
-	else if (header.protocol == IP_PROTO_UDP)
+	else if (ipv4Header.protocol == IP_PROTO_UDP)
 	{
-		return HandleUdpFrame(buffer);
+		HandleUdpDatagram(
+			ethernetHeader, ipv4Header, buffer + ipv4Header.SerializedLength());
 	}
 }
 
 //
 // UDP
 //
-void HandleUdpFrame(const uint8_t* buffer)
+void HandleUdpDatagram(
+	const EthernetFrameHeader ethernetHeader,
+	const Ipv4Header ipv4Header,
+	const uint8_t* buffer
+)
 {
-	const auto frame = EthernetFrame<Ipv4Packet<UdpDatagramHeader>>::Deserialize(buffer);
-	const auto header = frame.payload.payload;
+	const auto udpHeader = UdpDatagramHeader::Deserialize(buffer);
 
-	uint8_t* data = (uint8_t*)malloc(header.length);
-	const auto size =
-		buffer +
-		EthernetFrameHeader::SerializedLength() +
-		Ipv4Header::SerializedLength() +
-		UdpDatagramHeader::SerializedLength();
-	memcpy(data, size, header.length);
-
-	if (header.destinationPort == 69) // nice
+	if (udpHeader.destinationPort == 69) // nice
 	{
 		HandleTftpDatagram(
-			frame.header,
-			frame.payload.header,
-			frame.payload.payload,
-			data
+			ethernetHeader,
+			ipv4Header,
+			udpHeader,
+			buffer + udpHeader.SerializedLength()
 		);
 	}
 }
@@ -136,58 +132,65 @@ void HandleUdpFrame(const uint8_t* buffer)
 //
 void SendIcmpEchoRequest(MacAddress mac, uint32_t ip)
 {
-	IcmpEchoRequest<int> pingPacket(0);
-	IcmpPacket<decltype(pingPacket)> icmpPacket(8, 0, pingPacket);
-	Ipv4Packet<decltype(icmpPacket)> ipv4Packet(1, Ipv4Address, ip, icmpPacket);
+	IcmpPacketHeader icmpHeader(8, 0);
+	IcmpEchoHeader pingHeader(0, 0);
 
-	EthernetFrame<decltype(ipv4Packet)> frame(ETHERTYPE_IPV4, ipv4Packet);
-	frame.header.macDestination = mac;
-	frame.header.macSource = GetMacAddress();
+	size_t ipv4TotalSize = IcmpPacketHeader::SerializedLength() +
+		IcmpEchoHeader::SerializedLength() +
+		Ipv4Header::SerializedLength();
+	Ipv4Header ipv4Header(1, Ipv4Address, ip, ipv4TotalSize);
+
+	EthernetFrameHeader ethernetHeader(mac, GetMacAddress(), ETHERTYPE_IPV4);
 
 	uint8_t buffer[USPI_FRAME_BUFFER_SIZE];
-	size_t size = frame.Serialize(buffer);
-	USPiSendFrame(buffer, size);
+	size_t i = 0;
+
+	i += ethernetHeader.Serialize(buffer + i);
+	i += ipv4Header.Serialize(buffer + i);
+	i += pingHeader.Serialize(buffer + i);
+	i += icmpHeader.Serialize(buffer + 1);
+
+	USPiSendFrame(buffer, i);
 }
 
 void HandleIcmpFrame(const uint8_t* buffer)
 {
-	const auto frame = EthernetFrame<Ipv4Packet<IcmpPacketHeader>>::Deserialize(buffer);
-	const auto packetHeader = frame.payload.payload;
+	size_t requestSize = 0;
+	const auto requestEthernetHeader = EthernetFrameHeader::Deserialize(buffer + requestSize);
+	requestSize += requestEthernetHeader.SerializedLength();
+	const auto requestIpv4Header = Ipv4Header::Deserialize(buffer + requestSize);
+	requestSize += requestIpv4Header.SerializedLength();
+	const auto requestIcmpHeader = IcmpPacketHeader::Deserialize(buffer + requestSize);
+	requestSize += requestIcmpHeader.SerializedLength();
 
-	if (packetHeader.type == ICMP_ECHO_REQUEST)
+	if (requestIcmpHeader.type == ICMP_ECHO_REQUEST)
 	{
-		// TODO This should not be hardcoded lol
-		typedef EthernetFrame<Ipv4Packet<IcmpPacket<IcmpEchoRequest<uint8_t[56]>>>> Frame;
-		auto frameReq = Frame::Deserialize(buffer);
+		const auto requestEchoHeader = IcmpEchoHeader::Deserialize(buffer + requestSize);
+		requestSize += requestEchoHeader.SerializedLength();
 
-		auto echoReq = frameReq.payload.payload.payload;
-
-		IcmpEchoResponse<uint8_t[56]> echoResp;
-		echoResp.identifier = echoReq.identifier;
-		echoResp.sequenceNumber = echoReq.sequenceNumber;
-		memcpy(echoResp.data, echoReq.data, 56);
-
-		const auto sourceIp = frame.payload.header.sourceIp;
-
-		IcmpPacket<decltype(echoResp)> icmpResp(ICMP_ECHO_REPLY, 0, echoResp);
-
-		Ipv4Packet<decltype(icmpResp)> ipv4Resp(
+		const IcmpPacketHeader responseIcmpHeader(ICMP_ECHO_REPLY, 0);
+		const Ipv4Header responseIpv4Header(
 			IP_PROTO_ICMP,
 			Ipv4Address,
-			sourceIp,
-			icmpResp
+			requestIpv4Header.sourceIp,
+			requestIpv4Header.totalLength
 		);
+		const EthernetFrameHeader responseEthernetHeader(
+			requestEthernetHeader.macSource, GetMacAddress(), ETHERTYPE_IPV4);
 
-		EthernetFrame<decltype(ipv4Resp)> frameResp(
-			frame.header.macSource,
-			GetMacAddress(),
-			ETHERTYPE_IPV4,
-			ipv4Resp
-		);
+		const auto payloadLength = requestIpv4Header.totalLength -
+			requestIpv4Header.SerializedLength() -
+			requestIcmpHeader.SerializedLength() -
+			requestEchoHeader.SerializedLength();
 
-		uint8_t bufferResp[USPI_FRAME_BUFFER_SIZE];
-		const auto size = frameResp.Serialize(bufferResp);
-		USPiSendFrame(bufferResp, size);
+		std::array<uint8_t, USPI_FRAME_BUFFER_SIZE> bufferResp;
+		size_t respSize = 0;
+		respSize += responseEthernetHeader.Serialize(bufferResp.data() + respSize);
+		respSize += responseIpv4Header.Serialize(bufferResp.data() + respSize);
+		respSize += responseIcmpHeader.Serialize(bufferResp.data() + respSize);
+		memcpy(bufferResp.data() + respSize, buffer + requestSize, payloadLength);
+		respSize += payloadLength;
+		USPiSendFrame(bufferResp.data(), respSize);
 	}
 }
 

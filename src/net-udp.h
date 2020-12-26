@@ -51,18 +51,4 @@ struct UdpDatagramHeader
 		self.checksum = buffer[6] << 8 | buffer[7];
 		return self;
 	}
-} __attribute__((packed));
-
-template <class T>
-struct UdpDatagram
-{
-	UdpDatagramHeader header;
-	T payload;
-
-	UdpDatagram() {}
-
-	UdpDatagram(uint16_t sourcePort, uint16_t destinationPort, T payload) :
-		header(sourcePort, destinationPort, sizeof(UdpDatagram<T>)),
-		payload(payload)
-	{}
-} __attribute__((packed));
+};
