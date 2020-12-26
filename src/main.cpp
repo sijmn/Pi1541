@@ -1906,7 +1906,7 @@ void PrintFormat(const char* format, ...)
 	vsnprintf(tempBuffer, tempBufferSize, format, args);
 	va_end(args);
 
-	if (y_pos + 96 >= screenHeight) {
+	if (y_pos + 96 >= static_cast<int>(screenHeight)) {
 		screen.ScrollUp(8);
 		y_pos -= 16;
 	}
