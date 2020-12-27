@@ -29,7 +29,7 @@ namespace Net::Dhcp
 		bootFile{0},
 		magicValue{99, 130, 83, 99}
 	{
-		const auto mac = GetMacAddress();
+		const auto mac = Net::Utils::GetMacAddress();
 		hardwareAddressLength = mac.size();
 		std::memcpy(clientHardwareAddress.data(), mac.data(), mac.size());
 	}
@@ -136,8 +136,11 @@ namespace Net::Dhcp
 		size_t ipv4Length = udpLength + Ipv4Header::SerializedLength();
 		const Ipv4Header ipv4Header(
 			IP_PROTO_UDP, clientIpAddress, serverIpAddress, ipv4Length);
-		const EthernetFrameHeader ethernetHeader(
-			serverMacAddress, GetMacAddress(), ETHERTYPE_IPV4);
+		const Net::Ethernet::EthernetFrameHeader ethernetHeader(
+			serverMacAddress,
+			Net::Utils::GetMacAddress(),
+			Net::Ethernet::ETHERTYPE_IPV4
+		);
 
 		uint8_t buffer[USPI_FRAME_BUFFER_SIZE];
 		size_t size = 0;
@@ -190,7 +193,8 @@ namespace Net::Dhcp
 
 		size_t ipv4Length = udpLength + Ipv4Header::SerializedLength();
 		const Ipv4Header ipv4Header(IP_PROTO_UDP, 0, 0xFFFFFFFF, ipv4Length);
-		const EthernetFrameHeader ethernetHeader(GetMacAddress(), ETHERTYPE_IPV4);
+		const Net::Ethernet::EthernetFrameHeader ethernetHeader(
+			Net::Utils::GetMacAddress(), Net::Ethernet::ETHERTYPE_IPV4);
 
 		uint8_t buffer[USPI_FRAME_BUFFER_SIZE];
 		size_t size = 0;
@@ -217,7 +221,8 @@ namespace Net::Dhcp
 	}
 
 	static void handleOfferPacket(
-		const EthernetFrameHeader ethernetHeader, const DhcpHeader dhcpHeader
+		const Net::Ethernet::EthernetFrameHeader ethernetHeader,
+		const DhcpHeader dhcpHeader
 	) {
 		offeredIpAddresses.push_back(dhcpHeader.yourIpAddress);
 		serverIpAddresses.push_back(dhcpHeader.serverIpAddress);
@@ -225,9 +230,10 @@ namespace Net::Dhcp
 	}
 
 	static void handleAckPacket(
-		const EthernetFrameHeader ethernetHeader, const DhcpHeader dhcpHeader
+		const Net::Ethernet::EthernetFrameHeader ethernetHeader,
+		const DhcpHeader dhcpHeader
 	) {
-		Ipv4Address = dhcpHeader.yourIpAddress;
+		Net::Utils::Ipv4Address = dhcpHeader.yourIpAddress;
 
 		// TODO Schedule handler for end of lease.
 
@@ -239,7 +245,9 @@ namespace Net::Dhcp
 	}
 
 	void HandlePacket(
-		const EthernetFrameHeader& ethernetHeader, const uint8_t* buffer, size_t size
+		const Net::Ethernet::EthernetFrameHeader& ethernetHeader,
+		const uint8_t* buffer,
+		size_t size
 	) {
 		auto dhcpHeader = DhcpHeader();
 		const auto dhcpSize = DhcpHeader::Deserialize(dhcpHeader, buffer, size);

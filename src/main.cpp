@@ -376,22 +376,23 @@ void updateNetwork()
 		return;
 	}
 
-	auto ethernetHeader = EthernetFrameHeader::Deserialize(ipBuffer);
+	auto ethernetHeader = Net::Ethernet::EthernetFrameHeader::Deserialize(ipBuffer);
 	const auto offset = ethernetHeader.SerializedLength();
 
 	static bool announcementSent = false;
 	if (!announcementSent)
 	{
-		Net::Arp::SendAnnouncement(GetMacAddress(), Ipv4Address);
+		Net::Arp::SendAnnouncement(
+			Net::Utils::GetMacAddress(), Net::Utils::Ipv4Address);
 		announcementSent = true;
 	}
 
 	switch (ethernetHeader.type)
 	{
-	case ETHERTYPE_ARP:
+	case Net::Ethernet::ETHERTYPE_ARP:
 		Net::Arp::HandlePacket(ethernetHeader, ipBuffer + offset);
 		break;
-	case ETHERTYPE_IPV4:
+	case Net::Ethernet::ETHERTYPE_IPV4:
 		HandleIpv4Packet(ethernetHeader, ipBuffer + offset, sizeof(ipBuffer) - offset);
 		break;
 	}

@@ -1,22 +1,34 @@
 #pragma once
-#include "net.h"
+#include <array>
+#include "net-utils.h"
 
-struct EthernetFrameHeader
+using Net::Utils::MacAddress;
+
+namespace Net::Ethernet
 {
-	MacAddress macDestination;
-	MacAddress macSource;
-	std::uint16_t type;
-
-	EthernetFrameHeader();
-	EthernetFrameHeader(std::uint16_t type);
-	EthernetFrameHeader(MacAddress macSource, uint16_t type);
-	EthernetFrameHeader(MacAddress macDestination, MacAddress macSource, uint16_t type);
-
-	constexpr static std::size_t SerializedLength()
+	enum EtherType
 	{
-		return sizeof(macDestination) + sizeof(macSource) + sizeof(type);
-	}
+		ETHERTYPE_IPV4 = 0x0800,
+		ETHERTYPE_ARP = 0x0806,
+	};
 
-	std::size_t Serialize(uint8_t* buffer) const;
-	static EthernetFrameHeader Deserialize(const uint8_t* buffer);
-};
+	struct EthernetFrameHeader
+	{
+		MacAddress macDestination;
+		MacAddress macSource;
+		std::uint16_t type;
+
+		EthernetFrameHeader();
+		EthernetFrameHeader(std::uint16_t type);
+		EthernetFrameHeader(MacAddress macSource, uint16_t type);
+		EthernetFrameHeader(MacAddress macDestination, MacAddress macSource, uint16_t type);
+
+		constexpr static std::size_t SerializedLength()
+		{
+			return sizeof(macDestination) + sizeof(macSource) + sizeof(type);
+		}
+
+		std::size_t Serialize(uint8_t* buffer) const;
+		static EthernetFrameHeader Deserialize(const uint8_t* buffer);
+	};
+}; // namespace Net::Ethernet

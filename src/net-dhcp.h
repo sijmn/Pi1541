@@ -1,5 +1,6 @@
 #pragma once
 #include "net.h"
+#include "net-ethernet.h"
 
 namespace Net::Dhcp
 {
@@ -89,5 +90,8 @@ namespace Net::Dhcp
 
 	void SendDiscover();
 	void HandlePacket(
-		const EthernetFrameHeader& ethernetHeader, const uint8_t* buffer, size_t size);
+		const Net::Ethernet::EthernetFrameHeader& ethernetHeader,
+		const uint8_t* buffer,
+		size_t size
+	);
 } // namespace Net::Dhcp

@@ -1,25 +1,34 @@
 #pragma once
-#include "net.h"
+#include <unordered_map>
+#include "net-ethernet.h"
+#include "net-utils.h"
 
 namespace Net::Arp
 {
+	using Net::Utils::MacAddress;
+
+	enum ArpOperation {
+		ARP_OPERATION_REQUEST = 1,
+		ARP_OPERATION_REPLY = 2,
+	};
+
 	struct Ipv4ArpPacket
 	{
-		std::uint16_t hardwareType;
-		std::uint16_t protocolType;
-		std::uint8_t hardwareAddressLength;
-		std::uint8_t protocolAddressLength;
-		std::uint16_t operation;
+		uint16_t hardwareType;
+		uint16_t protocolType;
+		uint8_t hardwareAddressLength;
+		uint8_t protocolAddressLength;
+		uint16_t operation;
 
 		MacAddress senderMac;
-		std::uint32_t senderIp;
+		uint32_t senderIp;
 		MacAddress targetMac;
-		std::uint32_t targetIp;
+		uint32_t targetIp;
 
 		Ipv4ArpPacket();
-		Ipv4ArpPacket(std::uint16_t operation);
+		Ipv4ArpPacket(uint16_t operation);
 
-		constexpr std::size_t SerializedLength() const
+		constexpr size_t SerializedLength() const
 		{
 			return
 				sizeof(hardwareType) +
@@ -33,12 +42,12 @@ namespace Net::Arp
 				sizeof(targetIp);
 		}
 
-		std::size_t Serialize(std::uint8_t* buffer);
+		size_t Serialize(uint8_t* buffer);
 
 		static Ipv4ArpPacket Deserialize(const uint8_t* buffer);
 	};
 
-	void HandlePacket(EthernetFrameHeader header, uint8_t* buffer);
+	void HandlePacket(Net::Ethernet::EthernetFrameHeader header, uint8_t* buffer);
 
 	void SendPacket(
 		ArpOperation operation,
@@ -64,5 +73,5 @@ namespace Net::Arp
 
 	void SendAnnouncement(MacAddress mac, uint32_t ip);
 
-	extern std::unordered_map<std::uint32_t, MacAddress> ArpTable;
+	extern std::unordered_map<uint32_t, MacAddress> ArpTable;
 }; // namespace Net::Arp

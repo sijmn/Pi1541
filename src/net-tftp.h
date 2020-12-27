@@ -2,10 +2,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
-
-struct EthernetFrameHeader;
-struct Ipv4Header;
-struct UdpDatagramHeader;
+#include "net-udp.h"
 
 namespace Net::Tftp {
 	const size_t TFTP_BLOCK_SIZE = 512;
@@ -76,7 +73,7 @@ namespace Net::Tftp {
 	};
 
 	void HandlePacket(
-		const EthernetFrameHeader ethernetReqHeader,
+		const Net::Ethernet::EthernetFrameHeader ethernetReqHeader,
 		const Ipv4Header ipv4ReqHeader,
 		const UdpDatagramHeader udpReqHeader,
 		const uint8_t* buffer

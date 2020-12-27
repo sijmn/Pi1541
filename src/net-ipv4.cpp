@@ -1,4 +1,5 @@
 #include "net-ipv4.h"
+#include "net-utils.h"
 
 Ipv4Header::Ipv4Header() {}
 
@@ -48,7 +49,7 @@ size_t Ipv4Header::Serialize(uint8_t* buffer) const
     buffer[i++] = destinationIp >> 8;
     buffer[i++] = destinationIp;
 
-    uint16_t checksum = InternetChecksum(buffer, i);
+    uint16_t checksum = Net::Utils::InternetChecksum(buffer, i);
     buffer[10] = checksum;
     buffer[11] = checksum >> 8;
 

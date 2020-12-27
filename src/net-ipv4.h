@@ -1,5 +1,6 @@
 #pragma once
-#include "net.h"
+#include <cstdint>
+#include <cstddef>
 
 enum IpProtocols
 {

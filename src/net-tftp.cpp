@@ -115,7 +115,7 @@ namespace Net::Tftp
 	}
 
 	void HandlePacket(
-		const EthernetFrameHeader ethernetReqHeader,
+		const Net::Ethernet::EthernetFrameHeader ethernetReqHeader,
 		const Ipv4Header ipv4ReqHeader,
 		const UdpDatagramHeader udpReqHeader,
 		const uint8_t* data
@@ -149,14 +149,14 @@ namespace Net::Tftp
 			);
 			Ipv4Header ipv4RespHeader(
 				IP_PROTO_UDP,
-				Ipv4Address,
+				Net::Utils::Ipv4Address,
 				ipv4ReqHeader.sourceIp,
 				udpRespHeader.length + Ipv4Header::SerializedLength()
 			);
-			EthernetFrameHeader ethernetRespHeader(
+			Net::Ethernet::EthernetFrameHeader ethernetRespHeader(
 				Net::Arp::ArpTable[ipv4RespHeader.destinationIp],
-				GetMacAddress(),
-				ETHERTYPE_IPV4
+				Net::Utils::GetMacAddress(),
+				Net::Ethernet::ETHERTYPE_IPV4
 			);
 
 			size_t i = 0;
