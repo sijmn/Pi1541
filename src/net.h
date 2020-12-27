@@ -28,23 +28,6 @@ struct UdpDatagramHeader;
 struct Ipv4Header;
 
 //
-// ARP
-//
-void HandleArpFrame(EthernetFrameHeader header, uint8_t* buffer);
-void SendArpPacket(
-	ArpOperation operation,
-	MacAddress targetMac,
-	MacAddress senderMac,
-	uint32_t senderIp,
-	uint32_t targetIp
-);
-void SendArpRequest(
-	MacAddress targetMac, MacAddress senderMac, uint32_t senderIp, uint32_t targetIp);
-void SendArpReply(
-	MacAddress targetMac, MacAddress senderMac, uint32_t senderIp, uint32_t targetIp);
-void SendArpAnnouncement(MacAddress mac, uint32_t ip);
-
-//
 // IPv4
 //
 void HandleIpv4Packet(
@@ -58,13 +41,6 @@ void HandleUdpDatagram(
 	const Ipv4Header ipv4Header,
 	const uint8_t* buffer,
 	const size_t size
-);
-
-void HandleTftpDatagram(
-	const EthernetFrameHeader ethernetReqHeader,
-	const Ipv4Header ipv4ReqHeader,
-	const UdpDatagramHeader udpReqHeader,
-	const uint8_t* buffer
 );
 
 //
@@ -84,4 +60,3 @@ extern const MacAddress MacBroadcast;
 extern uint32_t Ipv4Address;
 
 extern bool FileUploaded;
-extern std::unordered_map<std::uint32_t, MacAddress> ArpTable;

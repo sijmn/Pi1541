@@ -382,14 +382,14 @@ void updateNetwork()
 	static bool announcementSent = false;
 	if (!announcementSent)
 	{
-		SendArpAnnouncement(GetMacAddress(), Ipv4Address);
+		Net::Arp::SendAnnouncement(GetMacAddress(), Ipv4Address);
 		announcementSent = true;
 	}
 
 	switch (ethernetHeader.type)
 	{
 	case ETHERTYPE_ARP:
-		HandleArpFrame(ethernetHeader, ipBuffer + offset);
+		Net::Arp::HandlePacket(ethernetHeader, ipBuffer + offset);
 		break;
 	case ETHERTYPE_IPV4:
 		HandleIpv4Packet(ethernetHeader, ipBuffer + offset, sizeof(ipBuffer) - offset);

@@ -7,78 +7,12 @@
 #include "net-ipv4.h"
 #include "net-udp.h"
 #include "net-dhcp.h"
+#include "net-tftp.h"
 #include "net.h"
 #include "types.h"
 
 #include <uspi.h>
 #include <uspios.h>
-
-//
-// ARP
-//
-void SendArpPacket(
-	ArpOperation operation,
-	MacAddress targetMac,
-	MacAddress senderMac,
-	uint32_t targetIp,
-	uint32_t senderIp)
-{
-	Ipv4ArpPacket arpPacket(operation);
-	arpPacket.targetMac = targetMac;
-	arpPacket.senderMac = senderMac;
-	arpPacket.targetIp = targetIp;
-	arpPacket.senderIp = senderIp;
-
-	EthernetFrameHeader ethernetHeader(senderMac, targetMac, ETHERTYPE_ARP);
-
-	uint8_t buffer[USPI_FRAME_BUFFER_SIZE];
-	size_t size = 0;
-	size += ethernetHeader.Serialize(buffer + size);
-	size += arpPacket.Serialize(buffer + size);
-	USPiSendFrame(buffer, size);
-}
-
-void SendArpRequest(
-	MacAddress targetMac, MacAddress senderMac, uint32_t targetIp, uint32_t senderIp)
-{
-	SendArpPacket(ARP_OPERATION_REQUEST, targetMac, senderMac, targetIp, senderIp);
-}
-
-void SendArpReply(
-	MacAddress targetMac, MacAddress senderMac, uint32_t targetIp, uint32_t senderIp)
-{
-	SendArpPacket(ARP_OPERATION_REPLY, targetMac, senderMac, targetIp, senderIp);
-}
-
-void SendArpAnnouncement(MacAddress mac, uint32_t ip)
-{
-	SendArpReply(MacBroadcast, mac, ip, ip);
-}
-
-void HandleArpFrame(const EthernetFrameHeader ethernetHeader, uint8_t* buffer)
-{
-	const auto macAddress = GetMacAddress();
-	const auto arpPacket = Ipv4ArpPacket::Deserialize(buffer);
-
-	if (
-		arpPacket.hardwareType == 1 &&
-		arpPacket.protocolType == ETHERTYPE_IPV4 &&
-		arpPacket.operation == ARP_OPERATION_REQUEST &&
-		arpPacket.targetIp == Ipv4Address)
-	{
-		SendArpReply(arpPacket.senderMac, macAddress, arpPacket.senderIp, Ipv4Address);
-	}
-
-	else if (
-		arpPacket.hardwareType == 1 &&
-		arpPacket.protocolType == ETHERTYPE_IPV4 &&
-		arpPacket.operation == ARP_OPERATION_REPLY &&
-		arpPacket.targetIp == Ipv4Address &&
-		arpPacket.targetMac == macAddress)
-	{
-		ArpTable.insert(std::make_pair(arpPacket.senderIp, arpPacket.senderMac));
-	}
-}
 
 //
 // IPv4
@@ -90,7 +24,8 @@ void HandleIpv4Packet(
 	const auto offset = Ipv4Header::SerializedLength();
 
 	// Update ARP table
-	ArpTable.insert(std::make_pair(ipv4Header.sourceIp, ethernetHeader.macSource));
+	Net::Arp::ArpTable.insert(
+		std::make_pair(ipv4Header.sourceIp, ethernetHeader.macSource));
 
 	if (ipv4Header.version != 4) return;
 	if (ipv4Header.ihl != 5) return; // Not supported
@@ -128,7 +63,7 @@ void HandleUdpDatagram(
 	}
 	else if (udpHeader.destinationPort == UDP_PORT_TFTP)
 	{
-		HandleTftpDatagram(
+		Net::Tftp::HandleTftpDatagram(
 			ethernetHeader,
 			ipv4Header,
 			udpHeader,
@@ -326,4 +261,3 @@ uint32_t Ipv4Address = 0xC0A80164;
 const MacAddress MacBroadcast{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 bool FileUploaded = false;
-std::unordered_map<std::uint32_t, MacAddress> ArpTable;
