@@ -1,5 +1,11 @@
 #pragma once
+#include <cstdint>
+#include <string>
 #include <vector>
+
+struct EthernetFrameHeader;
+struct Ipv4Header;
+struct UdpDatagramHeader;
 
 namespace Net::Tftp {
 	const size_t TFTP_BLOCK_SIZE = 512;
@@ -69,7 +75,7 @@ namespace Net::Tftp {
 			TftpDataPacket& out, const uint8_t* buffer, size_t length);
 	};
 
-	void HandleTftpDatagram(
+	void HandlePacket(
 		const EthernetFrameHeader ethernetReqHeader,
 		const Ipv4Header ipv4ReqHeader,
 		const UdpDatagramHeader udpReqHeader,

@@ -114,7 +114,7 @@ namespace Net::Tftp
 		);
 	}
 
-	void HandleTftpDatagram(
+	void HandlePacket(
 		const EthernetFrameHeader ethernetReqHeader,
 		const Ipv4Header ipv4ReqHeader,
 		const UdpDatagramHeader udpReqHeader,

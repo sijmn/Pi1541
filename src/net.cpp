@@ -63,7 +63,7 @@ void HandleUdpDatagram(
 	}
 	else if (udpHeader.destinationPort == UDP_PORT_TFTP)
 	{
-		Net::Tftp::HandleTftpDatagram(
+		Net::Tftp::HandlePacket(
 			ethernetHeader,
 			ipv4Header,
 			udpHeader,
