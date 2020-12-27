@@ -71,9 +71,15 @@ static std::unique_ptr<TftpPacket> handleTftpWriteRequest(const uint8_t* data)
 	return response;
 }
 
-static std::unique_ptr<TftpPacket> handleTftpData(const uint8_t* data, size_t length)
+static std::unique_ptr<TftpPacket> handleTftpData(const uint8_t* buffer, size_t size)
 {
-	auto packet = TftpDataPacket::Deserialize(data, length);
+	TftpDataPacket packet;
+	const auto tftpSize = TftpDataPacket::Deserialize(packet, buffer, size);
+	if (size == 0)
+	{
+		// TODO log
+		return nullptr;
+	}
 
 	if (packet.blockNumber != currentBlockNumber + 1)
 	{
@@ -268,11 +274,15 @@ size_t TftpAcknowledgementPacket::Serialize(uint8_t* buffer) const
 //
 TftpDataPacket::TftpDataPacket() : opcode(TFTP_OP_DATA) {}
 
-TftpDataPacket TftpDataPacket::Deserialize(const uint8_t* buffer, size_t length)
-{
-	TftpDataPacket self;
-	self.opcode = buffer[0] << 8 | buffer[1];
-	self.blockNumber = buffer[2] << 8 | buffer[3];
-	self.data = std::vector<uint8_t>(buffer + 4, buffer + length);
-	return self;
+size_t TftpDataPacket::Deserialize(
+	TftpDataPacket& out, const uint8_t* buffer, size_t size
+) {
+	if (size < sizeof(opcode) + sizeof(blockNumber)) {
+		return 0;
+	}
+
+	out.opcode = buffer[0] << 8 | buffer[1];
+	out.blockNumber = buffer[2] << 8 | buffer[3];
+	out.data = std::vector<uint8_t>(buffer + 4, buffer + size);
+	return size;
 }

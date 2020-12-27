@@ -64,5 +64,6 @@ struct TftpDataPacket
 	std::vector<uint8_t> data;
 
 	TftpDataPacket();
-	static TftpDataPacket Deserialize(const uint8_t* buffer, size_t length);
+	static size_t Deserialize(
+		TftpDataPacket& out, const uint8_t* buffer, size_t length);
 };

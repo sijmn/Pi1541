@@ -15,6 +15,12 @@ enum ArpOperation {
 	ARP_OPERATION_REPLY = 2,
 };
 
+enum UdpPort {
+	UDP_PORT_DHCP_SERVER = 67,
+	UDP_PORT_DHCP_CLIENT = 68,
+	UDP_PORT_TFTP = 69,  // nice
+};
+
 typedef std::array<uint8_t, 6> MacAddress;
 
 struct EthernetFrameHeader;
@@ -41,7 +47,8 @@ void SendArpAnnouncement(MacAddress mac, uint32_t ip);
 //
 // IPv4
 //
-void HandleIpv4Packet(const EthernetFrameHeader ethernetHeader, const uint8_t* buffer);
+void HandleIpv4Packet(
+	const EthernetFrameHeader ethernetHeader, const uint8_t* buffer, const size_t size);
 
 //
 // UDP
@@ -49,7 +56,8 @@ void HandleIpv4Packet(const EthernetFrameHeader ethernetHeader, const uint8_t* b
 void HandleUdpDatagram(
 	const EthernetFrameHeader ethernetHeader,
 	const Ipv4Header ipv4Header,
-	const uint8_t* buffer
+	const uint8_t* buffer,
+	const size_t size
 );
 
 void HandleTftpDatagram(
@@ -73,7 +81,7 @@ std::uint16_t InternetChecksum(const void* data, std::size_t size);
 MacAddress GetMacAddress();
 
 extern const MacAddress MacBroadcast;
-extern const uint32_t Ipv4Address;
+extern uint32_t Ipv4Address;
 
 extern bool FileUploaded;
 extern std::unordered_map<std::uint32_t, MacAddress> ArpTable;

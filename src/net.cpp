@@ -6,6 +6,7 @@
 #include "net-icmp.h"
 #include "net-ipv4.h"
 #include "net-udp.h"
+#include "net-dhcp.h"
 #include "net.h"
 #include "types.h"
 
@@ -82,9 +83,11 @@ void HandleArpFrame(const EthernetFrameHeader ethernetHeader, uint8_t* buffer)
 //
 // IPv4
 //
-void HandleIpv4Packet(const EthernetFrameHeader ethernetHeader, const uint8_t* buffer)
-{
+void HandleIpv4Packet(
+	const EthernetFrameHeader ethernetHeader, const uint8_t* buffer, const size_t size
+) {
 	const auto ipv4Header = Ipv4Header::Deserialize(buffer);
+	const auto offset = Ipv4Header::SerializedLength();
 
 	// Update ARP table
 	ArpTable.insert(std::make_pair(ipv4Header.sourceIp, ethernetHeader.macSource));
@@ -100,8 +103,7 @@ void HandleIpv4Packet(const EthernetFrameHeader ethernetHeader, const uint8_t* b
 	}
 	else if (ipv4Header.protocol == IP_PROTO_UDP)
 	{
-		HandleUdpDatagram(
-			ethernetHeader, ipv4Header, buffer + ipv4Header.SerializedLength());
+		HandleUdpDatagram(ethernetHeader, ipv4Header, buffer + offset, size - offset);
 	}
 }
 
@@ -111,12 +113,20 @@ void HandleIpv4Packet(const EthernetFrameHeader ethernetHeader, const uint8_t* b
 void HandleUdpDatagram(
 	const EthernetFrameHeader ethernetHeader,
 	const Ipv4Header ipv4Header,
-	const uint8_t* buffer
-)
-{
+	const uint8_t* buffer,
+	const size_t size
+) {
 	const auto udpHeader = UdpDatagramHeader::Deserialize(buffer);
 
-	if (udpHeader.destinationPort == 69) // nice
+	if (udpHeader.destinationPort == UDP_PORT_DHCP_CLIENT)
+	{
+		Net::Dhcp::HandlePacket(
+			ethernetHeader,
+			buffer + udpHeader.SerializedLength(),
+			size - udpHeader.SerializedLength()
+		);
+	}
+	else if (udpHeader.destinationPort == UDP_PORT_TFTP)
 	{
 		HandleTftpDatagram(
 			ethernetHeader,
@@ -155,8 +165,10 @@ void SendIcmpEchoRequest(MacAddress mac, uint32_t ip)
 
 void HandleIcmpFrame(const uint8_t* buffer)
 {
+	// TODO Don't re-parse the upper layers
 	size_t requestSize = 0;
-	const auto requestEthernetHeader = EthernetFrameHeader::Deserialize(buffer + requestSize);
+	const auto requestEthernetHeader =
+		EthernetFrameHeader::Deserialize(buffer + requestSize);
 	requestSize += requestEthernetHeader.SerializedLength();
 	const auto requestIpv4Header = Ipv4Header::Deserialize(buffer + requestSize);
 	requestSize += requestIpv4Header.SerializedLength();
@@ -165,7 +177,8 @@ void HandleIcmpFrame(const uint8_t* buffer)
 
 	if (requestIcmpHeader.type == ICMP_ECHO_REQUEST)
 	{
-		const auto requestEchoHeader = IcmpEchoHeader::Deserialize(buffer + requestSize);
+		const auto requestEchoHeader =
+			IcmpEchoHeader::Deserialize(buffer + requestSize);
 		requestSize += requestEchoHeader.SerializedLength();
 
 		const IcmpPacketHeader responseIcmpHeader(ICMP_ECHO_REPLY, 0);
@@ -309,7 +322,7 @@ MacAddress GetMacAddress()
 	return macAddress;
 }
 
-const uint32_t Ipv4Address = 0xC0A80164;
+uint32_t Ipv4Address = 0xC0A80164;
 const MacAddress MacBroadcast{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 bool FileUploaded = false;

@@ -2,17 +2,17 @@
 // Copyright(C) 2018 Stephen White
 //
 // This file is part of Pi1541.
-// 
+//
 // Pi1541 is free software : you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // Pi1541 is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with Pi1541. If not, see <http://www.gnu.org/licenses/>.
 
@@ -377,6 +377,7 @@ void updateNetwork()
 	}
 
 	auto ethernetHeader = EthernetFrameHeader::Deserialize(ipBuffer);
+	const auto offset = ethernetHeader.SerializedLength();
 
 	static bool announcementSent = false;
 	if (!announcementSent)
@@ -388,10 +389,10 @@ void updateNetwork()
 	switch (ethernetHeader.type)
 	{
 	case ETHERTYPE_ARP:
-		HandleArpFrame(ethernetHeader, ipBuffer + ethernetHeader.SerializedLength());
+		HandleArpFrame(ethernetHeader, ipBuffer + offset);
 		break;
 	case ETHERTYPE_IPV4:
-		HandleIpv4Packet(ethernetHeader, ipBuffer + ethernetHeader.SerializedLength());
+		HandleIpv4Packet(ethernetHeader, ipBuffer + offset, sizeof(ipBuffer) - offset);
 		break;
 	}
 }
@@ -659,7 +660,7 @@ void UpdateScreen()
 
 		//if (options.GetSupportUARTInput())
 		//	UpdateUartControls(refreshUartStatusDisplay, oldLED, oldMotor, oldATN, oldDATA, oldCLOCK, oldTrack, romIndex);
-		
+
 		updateNetwork();
 
 		// Go back to sleep. The USB irq will wake us up again.
@@ -831,7 +832,7 @@ EXIT_TYPE Emulate1541(FileBrowser* fileBrowser)
 #endif
 
 	inputMappings->directDiskSwapRequest = 0;
-	// Force an update on all the buttons now before we start emulation mode. 
+	// Force an update on all the buttons now before we start emulation mode.
 	IEC_Bus::ReadBrowseMode();
 
 	bool extraRAM = options.GetExtraRAM();
@@ -995,7 +996,7 @@ EXIT_TYPE Emulate1541(FileBrowser* fileBrowser)
 		} while (ctAfter == ctBefore);
 #endif
 		ctBefore = ctAfter;
-		
+
 		if (!refreshOutsAfterCPUStep)
 		{
 			IEC_Bus::ReadEmulationMode1541();
@@ -1085,7 +1086,7 @@ EXIT_TYPE Emulate1581(FileBrowser* fileBrowser)
 #endif
 
 	inputMappings->directDiskSwapRequest = 0;
-	// Force an update on all the buttons now before we start emulation mode. 
+	// Force an update on all the buttons now before we start emulation mode.
 	IEC_Bus::ReadBrowseMode();
 
 	DataBusReadFn dataBusRead = read6502_1581;
@@ -1440,7 +1441,7 @@ void emulator()
 
 			IEC_Bus::WaitUntilReset();
 			emulating = IEC_COMMANDS;
-	
+
 			if ((exitReason == EXIT_RESET) && (options.GetOnResetChangeToStartingFolder() || selectedViaIECCommands))
 				fileBrowser->DisplayRoot(); // TO CHECK
 
@@ -1462,9 +1463,9 @@ void emulator()
 //}
 
 #ifdef HAS_MULTICORE
-extern "C" 
+extern "C"
 {
-	void run_core() 
+	void run_core()
 	{
 		enable_MMU_and_IDCaches();
 		_enable_unaligned_access();
@@ -1978,7 +1979,7 @@ extern "C"
 #endif
 		inputMappings = new InputMappings();
 		//USPiMouseRegisterStatusHandler(MouseHandler);
-		
+
 		while (!USPiEthernetAvailable()) {
 			snprintf(tempBuffer, tempBufferSize, "Waiting for ethernet...");
 			screen.PrintText(false, 0, y_pos+=16, tempBuffer, COLOUR_WHITE, COLOUR_BLACK);
@@ -2048,4 +2049,3 @@ extern "C"
 #endif
 	}
 }
-

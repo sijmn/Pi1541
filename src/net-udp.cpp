@@ -14,7 +14,7 @@ UdpDatagramHeader::UdpDatagramHeader(
     checksum(0)
 {}
 
-size_t UdpDatagramHeader::Serialize(uint8_t* buffer)
+size_t UdpDatagramHeader::Serialize(uint8_t* buffer) const
 {
     size_t i = 0;
     buffer[i++] = sourcePort >> 8;

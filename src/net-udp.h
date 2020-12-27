@@ -22,6 +22,6 @@ struct UdpDatagramHeader
 			sizeof(checksum);
 	}
 
-	size_t Serialize(uint8_t* buffer);
+	size_t Serialize(uint8_t* buffer) const;
 	static UdpDatagramHeader Deserialize(const uint8_t* buffer);
 };

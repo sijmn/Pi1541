@@ -9,6 +9,7 @@ struct EthernetFrameHeader
 
 	EthernetFrameHeader();
 	EthernetFrameHeader(std::uint16_t type);
+	EthernetFrameHeader(MacAddress macSource, uint16_t type);
 	EthernetFrameHeader(MacAddress macDestination, MacAddress macSource, uint16_t type);
 
 	constexpr static std::size_t SerializedLength()
