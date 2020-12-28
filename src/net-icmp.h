@@ -45,5 +45,5 @@ namespace Net::Icmp
 	};
 
 	void SendEchoRequest(Utils::MacAddress mac, uint32_t ip);
-	void HandlePacket(const uint8_t* buffer);
+	void HandlePacket(const uint8_t* buffer, const size_t bufferSize);
 } // namespace Net::Icmp

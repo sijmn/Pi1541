@@ -369,32 +369,34 @@ void InitialiseLCD()
 
 void updateNetwork()
 {
-	unsigned int size = 0;
+	unsigned int frameSize = 0;
 	uint8_t ipBuffer[USPI_FRAME_BUFFER_SIZE];
-	if (!USPiEthernetAvailable() || !USPiReceiveFrame(ipBuffer, &size))
+	if (!USPiEthernetAvailable() || !USPiReceiveFrame(ipBuffer, &frameSize))
 	{
 		return;
 	}
 
-	auto ethernetHeader = Net::Ethernet::Header::Deserialize(ipBuffer);
-	const auto offset = ethernetHeader.SerializedLength();
+	Net::Ethernet::Header ethernetHeader;
+	auto headerSize = Net::Ethernet::Header::Deserialize(
+		ethernetHeader, ipBuffer, frameSize);
+	assert(headerSize != 0);
 
-	static bool announcementSent = false;
-	if (!announcementSent)
+	static bool arpAnnouncementSent = false;
+	if (!arpAnnouncementSent)
 	{
 		Net::Arp::SendAnnouncement(
 			Net::Utils::GetMacAddress(), Net::Utils::Ipv4Address);
-		announcementSent = true;
+		arpAnnouncementSent = true;
 	}
 
 	switch (ethernetHeader.type)
 	{
 	case Net::Ethernet::EtherType::Arp:
-		Net::Arp::HandlePacket(ethernetHeader, ipBuffer + offset);
+		Net::Arp::HandlePacket(ethernetHeader, ipBuffer + headerSize);
 		break;
 	case Net::Ethernet::EtherType::Ipv4:
 		Net::Ipv4::HandlePacket(
-			ethernetHeader, ipBuffer + offset, sizeof(ipBuffer) - offset);
+			ethernetHeader, ipBuffer + headerSize, frameSize - headerSize);
 		break;
 	}
 }

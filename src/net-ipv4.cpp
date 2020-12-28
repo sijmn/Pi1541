@@ -91,28 +91,28 @@ namespace Net::Ipv4
 	void HandlePacket(
 		const Ethernet::Header& ethernetHeader,
 		const uint8_t* buffer,
-		const size_t size
+		const size_t bufferSize
 	) {
-		const auto ipv4Header = Header::Deserialize(buffer);
-		const auto offset = Header::SerializedLength();
+		const auto header = Header::Deserialize(buffer);
+		const auto headerSize = Header::SerializedLength();
 
 		// Update ARP table
 		Arp::ArpTable.insert(
-			std::make_pair(ipv4Header.sourceIp, ethernetHeader.macSource));
+			std::make_pair(header.sourceIp, ethernetHeader.macSource));
 
-		if (ipv4Header.version != 4) return;
-		if (ipv4Header.ihl != 5) return; // Not supported
-		if (ipv4Header.destinationIp != Utils::Ipv4Address) return;
-		if (ipv4Header.fragmentOffset != 0) return; // TODO Support this
+		if (header.version != 4) return;
+		if (header.ihl != 5) return; // Not supported
+		if (header.destinationIp != Utils::Ipv4Address) return;
+		if (header.fragmentOffset != 0) return; // TODO Support this
 
-		if (ipv4Header.protocol == Ipv4::Protocol::Icmp)
+		if (header.protocol == Ipv4::Protocol::Icmp)
 		{
-			Icmp::HandlePacket(buffer);
+			Icmp::HandlePacket(buffer, bufferSize - headerSize);
 		}
-		else if (ipv4Header.protocol == Ipv4::Protocol::Udp)
+		else if (header.protocol == Ipv4::Protocol::Udp)
 		{
 			Udp::HandlePacket(
-				ethernetHeader, ipv4Header, buffer + offset, size - offset);
+				ethernetHeader, header, buffer + headerSize, bufferSize - headerSize);
 		}
 	}
 } // namespace Net::Ipv4

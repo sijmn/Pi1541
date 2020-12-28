@@ -1,7 +1,7 @@
 #include <memory>
+#include <cassert>
 #include <cstring>
 
-#include "ff.h"
 #include "net-arp.h"
 #include "net-ethernet.h"
 #include "net-ipv4.h"
@@ -9,6 +9,7 @@
 #include "net-udp.h"
 #include "net.h"
 
+#include "ff.h"
 #include "types.h"
 #include <uspi.h>
 
@@ -160,13 +161,22 @@ namespace Net::Tftp
 				Ethernet::EtherType::Ipv4
 			);
 
-			size_t i = 0;
+			size_t size = 0;
 			uint8_t buffer[USPI_FRAME_BUFFER_SIZE];
-			i += ethernetRespHeader.Serialize(buffer + i);
-			i += ipv4RespHeader.Serialize(buffer + i);
-			i += udpRespHeader.Serialize(buffer + i);
-			i += response->Serialize(buffer + i);
-			USPiSendFrame(buffer, i);
+			size += ethernetRespHeader.Serialize(buffer + size, sizeof(buffer) - size);
+			size += ipv4RespHeader.Serialize(buffer + size);
+			size += udpRespHeader.Serialize(buffer + size);
+			size += response->Serialize(buffer + size);
+
+			const auto expectedSize =
+				ethernetRespHeader.SerializedLength() +
+				ipv4RespHeader.SerializedLength() +
+				udpRespHeader.SerializedLength() +
+				response->SerializedLength();
+			assert(size == expectedSize);
+			assert(size <= sizeof(buffer));
+
+			USPiSendFrame(buffer, size);
 		}
 
 		if (last && shouldReboot)

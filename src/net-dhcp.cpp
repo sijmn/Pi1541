@@ -149,22 +149,18 @@ namespace Net::Dhcp
 
 		uint8_t buffer[USPI_FRAME_BUFFER_SIZE];
 		size_t size = 0;
+		size += ethernetHeader.Serialize(buffer + size, sizeof(buffer) - size);
+		size += ipv4Header.Serialize(buffer + size);
+		size += udpHeader.Serialize(buffer + size);
+		size += dhcpHeader.Serialize(buffer + size, sizeof(buffer) - size);
+
 		const auto expectedSize =
 			ethernetHeader.SerializedLength() +
 			ipv4Header.SerializedLength() +
 			udpHeader.SerializedLength() +
 			dhcpHeader.SerializedLength();
-
-		size += ethernetHeader.Serialize(buffer + size);
-		size += ipv4Header.Serialize(buffer + size);
-		size += udpHeader.Serialize(buffer + size);
-		size += dhcpHeader.Serialize(buffer + size, USPI_FRAME_BUFFER_SIZE - size);
-
-		if (size != expectedSize)
-		{
-			// TODO Log
-			return;
-		}
+		assert(size == expectedSize);
+		assert(size <= sizeof(buffer));
 
 		USPiSendFrame(buffer, size);
 	}
@@ -204,22 +200,19 @@ namespace Net::Dhcp
 
 		uint8_t buffer[USPI_FRAME_BUFFER_SIZE];
 		size_t size = 0;
+
+		size += ethernetHeader.Serialize(buffer + size, sizeof(buffer) - size);
+		size += ipv4Header.Serialize(buffer + size);
+		size += udpHeader.Serialize(buffer + size);
+		size += dhcpHeader.Serialize(buffer + size, sizeof(buffer) - size);
+
 		const auto expectedSize =
 			ethernetHeader.SerializedLength() +
 			ipv4Header.SerializedLength() +
 			udpHeader.SerializedLength() +
 			dhcpHeader.SerializedLength();
-
-		size += ethernetHeader.Serialize(buffer + size);
-		size += ipv4Header.Serialize(buffer + size);
-		size += udpHeader.Serialize(buffer + size);
-		size += dhcpHeader.Serialize(buffer + size, USPI_FRAME_BUFFER_SIZE - size);
-
-		if (size != expectedSize)
-		{
-			// TODO Log
-			return;
-		}
+		assert(size == expectedSize);
+		assert(size <= sizeof(buffer));
 
 		USPiSendFrame(buffer, size);
 

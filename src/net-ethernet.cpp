@@ -28,8 +28,13 @@ namespace Net::Ethernet
 		type(type)
 	{}
 
-	size_t Header::Serialize(uint8_t* buffer) const
+	size_t Header::Serialize(uint8_t* buffer, const size_t size) const
 	{
+		if (size < SerializedLength())
+		{
+			return 0;
+		}
+
 		size_t i = 0;
 
 		std::memcpy(buffer + i, macDestination.data(), macDestination.size());
@@ -44,12 +49,16 @@ namespace Net::Ethernet
 		return i;
 	}
 
-	Header Header::Deserialize(const uint8_t* buffer)
+	size_t Header::Deserialize(Header& out, const uint8_t* buffer, const size_t size)
 	{
-		Header self;
-		std::memcpy(self.macDestination.data(), buffer + 0, self.macDestination.size());
-		std::memcpy(self.macSource.data(), buffer + 6, self.macSource.size());
-		self.type = static_cast<EtherType>(buffer[12] << 8 | buffer[13]);
-		return self;
+		if (size < SerializedLength())
+		{
+			return 0;
+		}
+
+		std::memcpy(out.macDestination.data(), buffer + 0, out.macDestination.size());
+		std::memcpy(out.macSource.data(), buffer + 6, out.macSource.size());
+		out.type = static_cast<EtherType>(buffer[12] << 8 | buffer[13]);
+		return 14;
 	}
 } // namespace Net::Ethernet

@@ -1,3 +1,4 @@
+#include <cassert>
 #include <cstring>
 
 #include "net-icmp.h"
@@ -75,64 +76,108 @@ namespace Net::Icmp
 			mac, Utils::GetMacAddress(), Ethernet::EtherType::Ipv4);
 
 		uint8_t buffer[USPI_FRAME_BUFFER_SIZE];
-		size_t i = 0;
+		size_t size = 0;
 
-		i += ethernetHeader.Serialize(buffer + i);
-		i += ipv4Header.Serialize(buffer + i);
-		i += pingHeader.Serialize(buffer + i);
-		i += icmpHeader.Serialize(buffer + 1);
+		size += ethernetHeader.Serialize(buffer + size, sizeof(buffer) - size);
+		size += ipv4Header.Serialize(buffer + size);
+		size += pingHeader.Serialize(buffer + size);
+		size += icmpHeader.Serialize(buffer + 1);
 
-		USPiSendFrame(buffer, i);
+		const auto expectedSize =
+			ethernetHeader.SerializedLength() +
+			ipv4Header.SerializedLength() +
+			pingHeader.SerializedLength() +
+			icmpHeader.SerializedLength();
+		assert(size == expectedSize);
+		assert(size <= sizeof(buffer));
+
+		USPiSendFrame(buffer, size);
 	}
 
-	void HandlePacket(const uint8_t* buffer)
+	static void handleEchoRequest(
+		const Ethernet::Header& reqEthernetHeader,
+		const Ipv4::Header& reqIpv4Header,
+		const Icmp::PacketHeader& reqIcmpHeader,
+		const uint8_t* reqBuffer,
+		const size_t reqBufferSize
+	) {
+		const auto reqEchoHeader = Icmp::EchoHeader::Deserialize(reqBuffer);
+		const auto reqHeaderSize = reqEchoHeader.SerializedLength();
+
+		const Icmp::PacketHeader respIcmpHeader(Icmp::Type::EchoReply, 0);
+		const Ipv4::Header respIpv4Header(
+			Ipv4::Protocol::Icmp,
+			Utils::Ipv4Address,
+			reqIpv4Header.sourceIp,
+			reqIpv4Header.totalLength
+		);
+		const Ethernet::Header respEthernetHeader(
+			reqEthernetHeader.macSource,
+			Utils::GetMacAddress(),
+			Ethernet::EtherType::Ipv4
+		);
+
+		const auto payloadLength =
+			reqIpv4Header.totalLength -
+			reqIpv4Header.SerializedLength() -
+			reqIcmpHeader.SerializedLength() -
+			reqEchoHeader.SerializedLength();
+
+		std::array<uint8_t, USPI_FRAME_BUFFER_SIZE> respBuffer;
+
+		size_t respSize = 0;
+		respSize += respEthernetHeader.Serialize(
+			respBuffer.data() + respSize, respBuffer.size() - respSize);
+		respSize += respIpv4Header.Serialize(respBuffer.data() + respSize);
+		respSize += respIcmpHeader.Serialize(respBuffer.data() + respSize);
+		std::memcpy(
+			respBuffer.data() + respSize,
+			reqBuffer + reqHeaderSize,
+			payloadLength
+		);
+		respSize += payloadLength;
+
+		const auto expectedRespSize =
+			respEthernetHeader.SerializedLength() +
+			respIpv4Header.SerializedLength() +
+			respIcmpHeader.SerializedLength() +
+			payloadLength;
+		assert(respSize == expectedRespSize);
+		assert(respSize <= respBuffer.size());
+
+		USPiSendFrame(respBuffer.data(), respSize);
+	}
+
+	void HandlePacket(const uint8_t* buffer, const size_t bufferSize)
 	{
 		// TODO Don't re-parse the upper layers
-		size_t requestSize = 0;
-		const auto requestEthernetHeader =
-			Ethernet::Header::Deserialize(buffer + requestSize);
-		requestSize += requestEthernetHeader.SerializedLength();
-		const auto requestIpv4Header = Ipv4::Header::Deserialize(buffer + requestSize);
-		requestSize += requestIpv4Header.SerializedLength();
-		const auto requestIcmpHeader =
-			Icmp::PacketHeader::Deserialize(buffer + requestSize);
-		requestSize += requestIcmpHeader.SerializedLength();
+		size_t headerSize = 0;
 
-		if (requestIcmpHeader.type == Icmp::Type::EchoRequest)
+		Ethernet::Header ethernetHeader;
+		headerSize += Ethernet::Header::Deserialize(
+			ethernetHeader, buffer + headerSize, bufferSize - headerSize);
+
+		const auto ipv4Header = Ipv4::Header::Deserialize(buffer + headerSize);
+		headerSize += ipv4Header.SerializedLength();
+
+		const auto icmpHeader = Icmp::PacketHeader::Deserialize(buffer + headerSize);
+		headerSize += icmpHeader.SerializedLength();
+
+		const auto expectedHeaderSize =
+			ethernetHeader.SerializedLength() +
+			ipv4Header.SerializedLength() +
+			icmpHeader.SerializedLength();
+		assert(headerSize == expectedHeaderSize);
+
+		if (icmpHeader.type == Icmp::Type::EchoRequest)
 		{
-			const auto requestEchoHeader =
-				Icmp::EchoHeader::Deserialize(buffer + requestSize);
-			requestSize += requestEchoHeader.SerializedLength();
-
-			const Icmp::PacketHeader responseIcmpHeader(
-				Icmp::Type::EchoReply, 0);
-			const Ipv4::Header responseIpv4Header(
-				Ipv4::Protocol::Icmp,
-				Utils::Ipv4Address,
-				requestIpv4Header.sourceIp,
-				requestIpv4Header.totalLength
+			handleEchoRequest(
+				ethernetHeader,
+				ipv4Header,
+				icmpHeader,
+				buffer + headerSize,
+				bufferSize - headerSize
 			);
-			const Ethernet::Header responseEthernetHeader(
-				requestEthernetHeader.macSource,
-				Utils::GetMacAddress(),
-				Ethernet::EtherType::Ipv4
-			);
-
-			const auto payloadLength =
-				requestIpv4Header.totalLength -
-				requestIpv4Header.SerializedLength() -
-				requestIcmpHeader.SerializedLength() -
-				requestEchoHeader.SerializedLength();
-
-			std::array<uint8_t, USPI_FRAME_BUFFER_SIZE> bufferResp;
-			size_t respSize = 0;
-			respSize += responseEthernetHeader.Serialize(bufferResp.data() + respSize);
-			respSize += responseIpv4Header.Serialize(bufferResp.data() + respSize);
-			respSize += responseIcmpHeader.Serialize(bufferResp.data() + respSize);
-			std::memcpy(
-				bufferResp.data() + respSize, buffer + requestSize, payloadLength);
-			respSize += payloadLength;
-			USPiSendFrame(bufferResp.data(), respSize);
 		}
 	}
 } // namespace Net::Icmp

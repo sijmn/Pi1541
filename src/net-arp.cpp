@@ -1,3 +1,4 @@
+#include <cassert>
 #include <cstring>
 
 #include "net-arp.h"
@@ -87,8 +88,14 @@ namespace Net::Arp
 
 		uint8_t buffer[USPI_FRAME_BUFFER_SIZE];
 		size_t size = 0;
-		size += ethernetHeader.Serialize(buffer + size);
+		size += ethernetHeader.Serialize(buffer + size, sizeof(buffer) - size);
 		size += arpPacket.Serialize(buffer + size);
+
+		const auto expectedSize =
+			ethernetHeader.SerializedLength() + arpPacket.SerializedLength();
+		assert(size == expectedSize);
+		assert(size <= USPI_FRAME_BUFFER_SIZE);
+
 		USPiSendFrame(buffer, size);
 	}
 
