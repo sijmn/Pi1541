@@ -2,26 +2,45 @@
 #include <vector>
 #include <string>
 #include <cstdint>
+#include "net-ethernet.h"
+#include "net-ipv4.h"
 
-struct UdpDatagramHeader
+namespace Net::Udp
 {
-	uint16_t sourcePort;
-	uint16_t destinationPort;
-	uint16_t length;
-	uint16_t checksum;
-
-	UdpDatagramHeader();
-	UdpDatagramHeader(uint16_t sourcePort, uint16_t destinationPort, uint16_t length);
-
-	static constexpr size_t SerializedLength()
+	enum class Port : uint16_t
 	{
-		return
-			sizeof(sourcePort) +
-			sizeof(destinationPort) +
-			sizeof(length) +
-			sizeof(checksum);
-	}
+		DhcpServer = 67,
+		DhcpClient = 68,
+		Tftp = 69, // nice
+	};
 
-	size_t Serialize(uint8_t* buffer) const;
-	static UdpDatagramHeader Deserialize(const uint8_t* buffer);
-};
+	struct Header
+	{
+		Port sourcePort;
+		Port destinationPort;
+		uint16_t length;
+		uint16_t checksum;
+
+		Header();
+		Header(Port sourcePort, Port destinationPort, uint16_t length);
+
+		static constexpr size_t SerializedLength()
+		{
+			return
+				sizeof(sourcePort) +
+				sizeof(destinationPort) +
+				sizeof(length) +
+				sizeof(checksum);
+		}
+
+		size_t Serialize(uint8_t* buffer) const;
+		static Header Deserialize(const uint8_t* buffer);
+	};
+
+	void HandlePacket(
+		const Ethernet::Header ethernetHeader,
+		const Ipv4Header ipv4Header,
+		const uint8_t* buffer,
+		const size_t size
+	);
+}; // namespace Net::Udp

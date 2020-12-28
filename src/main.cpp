@@ -376,7 +376,7 @@ void updateNetwork()
 		return;
 	}
 
-	auto ethernetHeader = Net::Ethernet::EthernetFrameHeader::Deserialize(ipBuffer);
+	auto ethernetHeader = Net::Ethernet::Header::Deserialize(ipBuffer);
 	const auto offset = ethernetHeader.SerializedLength();
 
 	static bool announcementSent = false;

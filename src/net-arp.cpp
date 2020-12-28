@@ -8,18 +8,18 @@
 
 namespace Net::Arp
 {
-	Ipv4ArpPacket::Ipv4ArpPacket()
+	Packet::Packet()
 	{}
 
-	Ipv4ArpPacket::Ipv4ArpPacket(uint16_t operation) :
+	Packet::Packet(uint16_t operation) :
 		hardwareType(1), // Ethernet
-		protocolType(Net::Ethernet::ETHERTYPE_IPV4),
+		protocolType(Ethernet::ETHERTYPE_IPV4),
 		hardwareAddressLength(6),
 		protocolAddressLength(4),
 		operation(operation)
 	{}
 
-	size_t Ipv4ArpPacket::Serialize(uint8_t* buffer)
+	size_t Packet::Serialize(uint8_t* buffer)
 	{
 		buffer[0] = hardwareType >> 8;
 		buffer[1] = hardwareType;
@@ -48,9 +48,9 @@ namespace Net::Arp
 	}
 
 	// Static
-	Ipv4ArpPacket Ipv4ArpPacket::Deserialize(const uint8_t* buffer)
+	Packet Packet::Deserialize(const uint8_t* buffer)
 	{
-		Ipv4ArpPacket self;
+		Packet self;
 
 		self.hardwareType = buffer[0] << 8 | buffer[1];
 		self.protocolType = buffer[2] << 8 | buffer[3];
@@ -69,20 +69,20 @@ namespace Net::Arp
 	}
 
 	void SendPacket(
-		ArpOperation operation,
-		MacAddress targetMac,
-		MacAddress senderMac,
+		Operation operation,
+		Utils::MacAddress targetMac,
+		Utils::MacAddress senderMac,
 		uint32_t targetIp,
 		uint32_t senderIp)
 	{
-		Ipv4ArpPacket arpPacket(operation);
+		Packet arpPacket(operation);
 		arpPacket.targetMac = targetMac;
 		arpPacket.senderMac = senderMac;
 		arpPacket.targetIp = targetIp;
 		arpPacket.senderIp = senderIp;
 
-		Net::Ethernet::EthernetFrameHeader ethernetHeader(
-			senderMac, targetMac, Net::Ethernet::ETHERTYPE_ARP);
+		Ethernet::Header ethernetHeader(
+			senderMac, targetMac, Ethernet::ETHERTYPE_ARP);
 
 		uint8_t buffer[USPI_FRAME_BUFFER_SIZE];
 		size_t size = 0;
@@ -92,8 +92,8 @@ namespace Net::Arp
 	}
 
 	void SendRequest(
-		MacAddress targetMac,
-		MacAddress senderMac,
+		Utils::MacAddress targetMac,
+		Utils::MacAddress senderMac,
 		uint32_t targetIp,
 		uint32_t senderIp
 	) {
@@ -101,46 +101,46 @@ namespace Net::Arp
 	}
 
 	void SendReply(
-		MacAddress targetMac, MacAddress senderMac, uint32_t targetIp, uint32_t senderIp)
+		Utils::MacAddress targetMac, Utils::MacAddress senderMac, uint32_t targetIp, uint32_t senderIp)
 	{
 		SendPacket(ARP_OPERATION_REPLY, targetMac, senderMac, targetIp, senderIp);
 	}
 
-	void SendAnnouncement(MacAddress mac, uint32_t ip)
+	void SendAnnouncement(Utils::MacAddress mac, uint32_t ip)
 	{
-		SendReply(Net::Utils::MacBroadcast, mac, ip, ip);
+		SendReply(Utils::MacBroadcast, mac, ip, ip);
 	}
 
 	void HandlePacket(
-		const Net::Ethernet::EthernetFrameHeader ethernetHeader, uint8_t* buffer
+		const Ethernet::Header ethernetHeader, uint8_t* buffer
 	) {
-		const auto macAddress = Net::Utils::GetMacAddress();
-		const auto arpPacket = Ipv4ArpPacket::Deserialize(buffer);
+		const auto macAddress = Utils::GetMacAddress();
+		const auto arpPacket = Packet::Deserialize(buffer);
 
 		if (
 			arpPacket.hardwareType == 1 &&
-			arpPacket.protocolType == Net::Ethernet::ETHERTYPE_IPV4 &&
+			arpPacket.protocolType == Ethernet::ETHERTYPE_IPV4 &&
 			arpPacket.operation == ARP_OPERATION_REQUEST &&
-			arpPacket.targetIp == Net::Utils::Ipv4Address)
+			arpPacket.targetIp == Utils::Ipv4Address)
 		{
 			SendReply(
 				arpPacket.senderMac,
 				macAddress,
 				arpPacket.senderIp,
-				Net::Utils::Ipv4Address
+				Utils::Ipv4Address
 			);
 		}
 
 		else if (
 			arpPacket.hardwareType == 1 &&
-			arpPacket.protocolType == Net::Ethernet::ETHERTYPE_IPV4 &&
+			arpPacket.protocolType == Ethernet::ETHERTYPE_IPV4 &&
 			arpPacket.operation == ARP_OPERATION_REPLY &&
-			arpPacket.targetIp == Net::Utils::Ipv4Address &&
+			arpPacket.targetIp == Utils::Ipv4Address &&
 			arpPacket.targetMac == macAddress)
 		{
 			ArpTable.insert(std::make_pair(arpPacket.senderIp, arpPacket.senderMac));
 		}
 	}
 
-	std::unordered_map<uint32_t, MacAddress> ArpTable;
+	std::unordered_map<uint32_t, Utils::MacAddress> ArpTable;
 }; // namespace Net::Arp

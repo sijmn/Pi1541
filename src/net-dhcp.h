@@ -10,7 +10,7 @@ namespace Net::Dhcp
 		BootReply = 2,
 	};
 
-	struct DhcpHeader
+	struct Header
 	{
 		/// Message op code / message type. 1 = BOOTREQUEST, 2 = BOOTREPLY
 		Opcode opcode;
@@ -60,8 +60,8 @@ namespace Net::Dhcp
 		/// Always 99, 130, 83, 99
 		std::array<uint8_t, 4> magicValue;
 
-		DhcpHeader();
-		DhcpHeader(Opcode opcode, uint32_t transactionId);
+		Header();
+		Header(Opcode opcode, uint32_t transactionId);
 
 		constexpr static size_t SerializedLength()
 		{
@@ -85,12 +85,12 @@ namespace Net::Dhcp
 
 		size_t Serialize(uint8_t* buffer, const size_t size) const;
 		static size_t Deserialize(
-			DhcpHeader& out, const uint8_t* buffer, const size_t size);
+			Header& out, const uint8_t* buffer, const size_t size);
 	};
 
 	void SendDiscover();
 	void HandlePacket(
-		const Net::Ethernet::EthernetFrameHeader& ethernetHeader,
+		const Ethernet::Header& ethernetHeader,
 		const uint8_t* buffer,
 		size_t size
 	);

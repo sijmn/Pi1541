@@ -10,10 +10,10 @@
 
 namespace Net::Dhcp
 {
-	DhcpHeader::DhcpHeader()
+	Header::Header()
 	{}
 
-	DhcpHeader::DhcpHeader(Opcode opcode, uint32_t transactionId) :
+	Header::Header(Opcode opcode, uint32_t transactionId) :
 		opcode(opcode),
 		hardwareAddressType(1), // Ethernet
 		hops(0),
@@ -29,14 +29,14 @@ namespace Net::Dhcp
 		bootFile{0},
 		magicValue{99, 130, 83, 99}
 	{
-		const auto mac = Net::Utils::GetMacAddress();
+		const auto mac = Utils::GetMacAddress();
 		hardwareAddressLength = mac.size();
 		std::memcpy(clientHardwareAddress.data(), mac.data(), mac.size());
 	}
 
-	size_t DhcpHeader::Serialize(uint8_t* buffer, const size_t size) const
+	size_t Header::Serialize(uint8_t* buffer, const size_t size) const
 	{
-		if (size < DhcpHeader::SerializedLength()) {
+		if (size < Header::SerializedLength()) {
 			return 0;
 		}
 
@@ -81,8 +81,8 @@ namespace Net::Dhcp
 		return i;
 	}
 
-	size_t DhcpHeader::Deserialize(
-		DhcpHeader& out, const uint8_t* buffer, const size_t size
+	size_t Header::Deserialize(
+		Header& out, const uint8_t* buffer, const size_t size
 	) {
 		if (size < SerializedLength()) {
 			return 0;
@@ -121,25 +121,28 @@ namespace Net::Dhcp
 	static uint32_t transactionId;
 	static std::vector<uint32_t> offeredIpAddresses;
 	static std::vector<uint32_t> serverIpAddresses;
-	static std::vector<MacAddress> serverMacAddresses;
+	static std::vector<Utils::MacAddress> serverMacAddresses;
 	static bool serverSelected;
 
-	void sendRequest(uint32_t clientIpAddress, MacAddress serverMacAddress, uint32_t serverIpAddress)
-	{
-		const DhcpHeader dhcpHeader(Opcode::BootRequest, transactionId);
+	void sendRequest(
+		uint32_t clientIpAddress,
+		Utils::MacAddress serverMacAddress,
+		uint32_t serverIpAddress
+	) {
+		const Header dhcpHeader(Opcode::BootRequest, transactionId);
 
 		size_t udpLength =
-			dhcpHeader.SerializedLength() + UdpDatagramHeader::SerializedLength();
-		const UdpDatagramHeader udpHeader(
-			UDP_PORT_DHCP_CLIENT, UDP_PORT_DHCP_SERVER, udpLength);
+			dhcpHeader.SerializedLength() + Udp::Header::SerializedLength();
+		const Udp::Header udpHeader(
+			Udp::Port::DhcpClient, Udp::Port::DhcpServer, udpLength);
 
 		size_t ipv4Length = udpLength + Ipv4Header::SerializedLength();
 		const Ipv4Header ipv4Header(
 			IP_PROTO_UDP, clientIpAddress, serverIpAddress, ipv4Length);
-		const Net::Ethernet::EthernetFrameHeader ethernetHeader(
+		const Ethernet::Header ethernetHeader(
 			serverMacAddress,
-			Net::Utils::GetMacAddress(),
-			Net::Ethernet::ETHERTYPE_IPV4
+			Utils::GetMacAddress(),
+			Ethernet::ETHERTYPE_IPV4
 		);
 
 		uint8_t buffer[USPI_FRAME_BUFFER_SIZE];
@@ -184,17 +187,17 @@ namespace Net::Dhcp
 	{
 		transactionId = std::rand();
 		offeredIpAddresses.clear();
-		const DhcpHeader dhcpHeader(Opcode::BootRequest, transactionId);
+		const Header dhcpHeader(Opcode::BootRequest, transactionId);
 
 		size_t udpLength =
-			dhcpHeader.SerializedLength() + UdpDatagramHeader::SerializedLength();
-		const UdpDatagramHeader udpHeader(
-			UDP_PORT_DHCP_CLIENT, UDP_PORT_DHCP_SERVER, udpLength);
+			dhcpHeader.SerializedLength() + Udp::Header::SerializedLength();
+		const Udp::Header udpHeader(
+			Udp::Port::DhcpClient, Udp::Port::DhcpServer, udpLength);
 
 		size_t ipv4Length = udpLength + Ipv4Header::SerializedLength();
 		const Ipv4Header ipv4Header(IP_PROTO_UDP, 0, 0xFFFFFFFF, ipv4Length);
-		const Net::Ethernet::EthernetFrameHeader ethernetHeader(
-			Net::Utils::GetMacAddress(), Net::Ethernet::ETHERTYPE_IPV4);
+		const Ethernet::Header ethernetHeader(
+			Utils::GetMacAddress(), Ethernet::ETHERTYPE_IPV4);
 
 		uint8_t buffer[USPI_FRAME_BUFFER_SIZE];
 		size_t size = 0;
@@ -221,8 +224,8 @@ namespace Net::Dhcp
 	}
 
 	static void handleOfferPacket(
-		const Net::Ethernet::EthernetFrameHeader ethernetHeader,
-		const DhcpHeader dhcpHeader
+		const Ethernet::Header ethernetHeader,
+		const Header dhcpHeader
 	) {
 		offeredIpAddresses.push_back(dhcpHeader.yourIpAddress);
 		serverIpAddresses.push_back(dhcpHeader.serverIpAddress);
@@ -230,10 +233,10 @@ namespace Net::Dhcp
 	}
 
 	static void handleAckPacket(
-		const Net::Ethernet::EthernetFrameHeader ethernetHeader,
-		const DhcpHeader dhcpHeader
+		const Ethernet::Header ethernetHeader,
+		const Header dhcpHeader
 	) {
-		Net::Utils::Ipv4Address = dhcpHeader.yourIpAddress;
+		Utils::Ipv4Address = dhcpHeader.yourIpAddress;
 
 		// TODO Schedule handler for end of lease.
 
@@ -245,12 +248,12 @@ namespace Net::Dhcp
 	}
 
 	void HandlePacket(
-		const Net::Ethernet::EthernetFrameHeader& ethernetHeader,
+		const Ethernet::Header& ethernetHeader,
 		const uint8_t* buffer,
 		size_t size
 	) {
-		auto dhcpHeader = DhcpHeader();
-		const auto dhcpSize = DhcpHeader::Deserialize(dhcpHeader, buffer, size);
+		auto dhcpHeader = Header();
+		const auto dhcpSize = Header::Deserialize(dhcpHeader, buffer, size);
 		if (dhcpSize == 0) {
 			// TODO log
 			return;
