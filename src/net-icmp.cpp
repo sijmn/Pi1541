@@ -3,6 +3,7 @@
 
 #include "net-icmp.h"
 
+#include "debug.h"
 #include "types.h"
 #include <uspi.h>
 
@@ -96,7 +97,7 @@ namespace Net::Icmp
 		size_t size = 0;
 
 		size += ethernetHeader.Serialize(buffer + size, sizeof(buffer) - size);
-		size += ipv4Header.Serialize(buffer + size);
+		size += ipv4Header.Serialize(buffer + size, sizeof(buffer) - size);
 		size += pingHeader.Serialize(buffer + size, sizeof(buffer) - size);
 		size += icmpHeader.Serialize(buffer + size, sizeof(buffer) - size);
 
@@ -121,8 +122,15 @@ namespace Net::Icmp
 		EchoHeader reqEchoHeader;
 		const auto reqEchoHeaderSize =
 			Icmp::EchoHeader::Deserialize(reqEchoHeader, reqBuffer, reqBufferSize);
-		assert(reqEchoHeaderSize == reqEchoHeader.SerializedLength());
-		assert(reqEchoHeaderSize <= reqBufferSize);
+		if (reqEchoHeaderSize == 0 || reqBufferSize < reqEchoHeaderSize)
+		{
+			DEBUG_LOG(
+				"Dropped ICMP packet "
+				"(invalid buffer size %ul, expected at least %ul)\r\n",
+				reqBufferSize, EchoHeader::SerializedLength()
+			);
+			return;
+		}
 
 		const Icmp::Header respIcmpHeader(Icmp::Type::EchoReply, 0);
 		const Ipv4::Header respIpv4Header(
@@ -148,7 +156,8 @@ namespace Net::Icmp
 		size_t respSize = 0;
 		respSize += respEthernetHeader.Serialize(
 			respBuffer.data() + respSize, respBuffer.size() - respSize);
-		respSize += respIpv4Header.Serialize(respBuffer.data() + respSize);
+		respSize += respIpv4Header.Serialize(
+			respBuffer.data() + respSize, respBuffer.size() - respSize);
 		respSize += respIcmpHeader.Serialize(
 			respBuffer.data() + respSize, respBuffer.size() - respSize);
 		std::memcpy(
@@ -178,8 +187,9 @@ namespace Net::Icmp
 		headerSize += Ethernet::Header::Deserialize(
 			ethernetHeader, buffer + headerSize, bufferSize - headerSize);
 
-		const auto ipv4Header = Ipv4::Header::Deserialize(buffer + headerSize);
-		headerSize += ipv4Header.SerializedLength();
+		Ipv4::Header ipv4Header;
+		headerSize += Ipv4::Header::Deserialize(
+			ipv4Header, buffer + headerSize, bufferSize - headerSize);
 
 		Header icmpHeader;
 		headerSize += Icmp::Header::Deserialize(
@@ -189,9 +199,16 @@ namespace Net::Icmp
 			ethernetHeader.SerializedLength() +
 			ipv4Header.SerializedLength() +
 			icmpHeader.SerializedLength();
-		assert(headerSize == expectedHeaderSize);
+		if (headerSize != expectedHeaderSize)
+		{
+			DEBUG_LOG(
+				"Dropped ICMP packet "
+				"(invalid buffer size %ul, expected at least %ul)\r\n",
+				bufferSize, expectedHeaderSize
+			);
+		}
 
-		if (icmpHeader.type == Icmp::Type::EchoRequest)
+		if (icmpHeader.type == Type::EchoRequest)
 		{
 			handleEchoRequest(
 				ethernetHeader,

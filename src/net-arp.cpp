@@ -94,7 +94,7 @@ namespace Net::Arp
 		const auto expectedSize =
 			ethernetHeader.SerializedLength() + arpPacket.SerializedLength();
 		assert(size == expectedSize);
-		assert(size <= USPI_FRAME_BUFFER_SIZE);
+		assert(size <= sizeof(buffer));
 
 		USPiSendFrame(buffer, size);
 	}

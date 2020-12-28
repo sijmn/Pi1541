@@ -1,9 +1,13 @@
+#include <cassert>
+
 #include "net-ipv4.h"
 #include "net-ethernet.h"
 #include "net-arp.h"
 #include "net-icmp.h"
 #include "net-udp.h"
 #include "net-utils.h"
+
+#include "debug.h"
 
 namespace Net::Ipv4
 {
@@ -27,10 +31,14 @@ namespace Net::Ipv4
 		destinationIp(destinationIp)
 	{}
 
-	size_t Header::Serialize(uint8_t* buffer) const
+	size_t Header::Serialize(uint8_t* buffer, const size_t bufferSize) const
 	{
-		size_t i = 0;
+		if (bufferSize <= SerializedLength())
+		{
+			return 0;
+		}
 
+		size_t i = 0;
 		buffer[i++] = version << 4 | ihl;
 		buffer[i++] = dscp << 2 | ecn;
 		buffer[i++] = totalLength >> 8;
@@ -62,30 +70,35 @@ namespace Net::Ipv4
 		return i;
 	}
 
-	Header Header::Deserialize(const uint8_t* buffer)
-	{
-		Header self;
-		self.version = buffer[0] >> 4;
-		self.ihl = buffer[0] & 0x0F;
+	size_t Header::Deserialize(
+		Header& out, const uint8_t* buffer, const size_t bufferSize
+	) {
+		if (bufferSize <= SerializedLength())
+		{
+			return 0;
+		}
 
-		self.dscp = buffer[1] >> 2;
-		self.ecn = buffer[1] & 0x03;
+		out.version = buffer[0] >> 4;
+		out.ihl = buffer[0] & 0x0F;
 
-		self.totalLength = buffer[2] << 8 | buffer[3];
-		self.identification = buffer[4] << 8 | buffer[5];
+		out.dscp = buffer[1] >> 2;
+		out.ecn = buffer[1] & 0x03;
 
-		self.flags = buffer[6] >> 5;
-		self.fragmentOffset = (buffer[6] & 0x1F) << 8 | buffer[7];
+		out.totalLength = buffer[2] << 8 | buffer[3];
+		out.identification = buffer[4] << 8 | buffer[5];
 
-		self.ttl = buffer[8];
-		self.protocol = static_cast<Protocol>(buffer[9]);
-		self.headerChecksum = buffer[10] << 8 | buffer[11];
+		out.flags = buffer[6] >> 5;
+		out.fragmentOffset = (buffer[6] & 0x1F) << 8 | buffer[7];
 
-		self.sourceIp = buffer[12] << 24 | buffer[13] << 16 | buffer[14] << 8 | buffer[15];
-		self.destinationIp =
+		out.ttl = buffer[8];
+		out.protocol = static_cast<Protocol>(buffer[9]);
+		out.headerChecksum = buffer[10] << 8 | buffer[11];
+
+		out.sourceIp = buffer[12] << 24 | buffer[13] << 16 | buffer[14] << 8 | buffer[15];
+		out.destinationIp =
 			buffer[16] << 24 | buffer[17] << 16 | buffer[18] << 8 | buffer[19];
 
-		return self;
+		return 20;
 	}
 
 	void HandlePacket(
@@ -93,8 +106,16 @@ namespace Net::Ipv4
 		const uint8_t* buffer,
 		const size_t bufferSize
 	) {
-		const auto header = Header::Deserialize(buffer);
-		const auto headerSize = Header::SerializedLength();
+		Header header;
+		const auto headerSize = Header::Deserialize(header, buffer, bufferSize);
+		if (headerSize != Header::SerializedLength())
+		{
+			DEBUG_LOG(
+				"Dropped IPv4 packet (invalid buffer size %lu, expected at least %lu)\r\n"
+				bufferSize, headerSize
+			);
+			return;
+		}
 
 		// Update ARP table
 		Arp::ArpTable.insert(

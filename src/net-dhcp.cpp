@@ -7,6 +7,7 @@
 #include "net-ipv4.h"
 #include "net-ethernet.h"
 
+#include "debug.h"
 #include "types.h"
 #include <uspi.h>
 #include <uspios.h>
@@ -150,8 +151,8 @@ namespace Net::Dhcp
 		uint8_t buffer[USPI_FRAME_BUFFER_SIZE];
 		size_t size = 0;
 		size += ethernetHeader.Serialize(buffer + size, sizeof(buffer) - size);
-		size += ipv4Header.Serialize(buffer + size);
-		size += udpHeader.Serialize(buffer + size);
+		size += ipv4Header.Serialize(buffer + size, sizeof(buffer) - size);
+		size += udpHeader.Serialize(buffer + size, sizeof(buffer) - size);
 		size += dhcpHeader.Serialize(buffer + size, sizeof(buffer) - size);
 
 		const auto expectedSize =
@@ -202,8 +203,8 @@ namespace Net::Dhcp
 		size_t size = 0;
 
 		size += ethernetHeader.Serialize(buffer + size, sizeof(buffer) - size);
-		size += ipv4Header.Serialize(buffer + size);
-		size += udpHeader.Serialize(buffer + size);
+		size += ipv4Header.Serialize(buffer + size, sizeof(buffer) - size);
+		size += udpHeader.Serialize(buffer + size, sizeof(buffer) - size);
 		size += dhcpHeader.Serialize(buffer + size, sizeof(buffer) - size);
 
 		const auto expectedSize =
@@ -249,26 +250,29 @@ namespace Net::Dhcp
 		const uint8_t* buffer,
 		size_t size
 	) {
-		auto dhcpHeader = Header();
-		const auto dhcpSize = Header::Deserialize(dhcpHeader, buffer, size);
-		if (dhcpSize == 0)
+		Header header;
+		const auto dhcpSize = Header::Deserialize(header, buffer, size);
+		if (dhcpSize != Header::SerializedLength())
 		{
-			// TODO log
+			DEBUG_LOG(
+				"Dropped DHCP packet (invalid buffer size %lu, expected %lu)\r\n",
+				size, Header::SerializedLength()
+			);
 			return;
 		}
 
-		if (dhcpHeader.opcode != Opcode::BootReply) return;
-		if (dhcpHeader.hardwareAddressType != 1) return;
-		if (dhcpHeader.hardwareAddressLength != 6) return;
-		if (dhcpHeader.transactionId != transactionId) return;
+		if (header.opcode != Opcode::BootReply) return;
+		if (header.hardwareAddressType != 1) return;
+		if (header.hardwareAddressLength != 6) return;
+		if (header.transactionId != transactionId) return;
 
 		if (!serverSelected)
 		{
-			handleOfferPacket(ethernetHeader, dhcpHeader);
+			handleOfferPacket(ethernetHeader, header);
 		}
 		else
 		{
-			handleAckPacket(ethernetHeader, dhcpHeader);
+			handleAckPacket(ethernetHeader, header);
 		}
 	}
 } // namespace Net::Dhcp

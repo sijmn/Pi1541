@@ -2,6 +2,8 @@
 #include "net-dhcp.h"
 #include "net-tftp.h"
 
+#include "debug.h"
+
 namespace Net::Udp
 {
 	Header::Header()
@@ -18,8 +20,13 @@ namespace Net::Udp
 		checksum(0)
 	{}
 
-	size_t Header::Serialize(uint8_t* buffer) const
+	size_t Header::Serialize(uint8_t* buffer, const size_t bufferSize) const
 	{
+		if (bufferSize < SerializedLength())
+		{
+			return 0;
+		}
+
 		size_t i = 0;
 		buffer[i++] = static_cast<uint16_t>(sourcePort) >> 8;
 		buffer[i++] = static_cast<uint16_t>(sourcePort);
@@ -32,30 +39,51 @@ namespace Net::Udp
 		return i;
 	}
 
-	Header Header::Deserialize(const uint8_t* buffer)
+	size_t Header::Deserialize(const uint8_t* buffer, const size_t bufferSize)
 	{
-		Header self;
-		self.sourcePort = static_cast<Port>(buffer[0] << 8 | buffer[1]);
-		self.destinationPort = static_cast<Port>(buffer[2] << 8 | buffer[3]);
-		self.length = buffer[4] << 8 | buffer[5];
-		self.checksum = buffer[6] << 8 | buffer[7];
-		return self;
+		if (bufferSize < Header::SerializedLength())
+		{
+			return 0;
+		}
+
+		sourcePort = static_cast<Port>(buffer[0] << 8 | buffer[1]);
+		destinationPort = static_cast<Port>(buffer[2] << 8 | buffer[3]);
+		length = buffer[4] << 8 | buffer[5];
+		checksum = buffer[6] << 8 | buffer[7];
+		return 8;
 	}
 
 	void HandlePacket(
 		const Ethernet::Header ethernetHeader,
 		const Ipv4::Header ipv4Header,
 		const uint8_t* buffer,
-		const size_t size
+		const size_t bufferSize
 	) {
-		const auto udpHeader = Header::Deserialize(buffer);
+		Header udpHeader;
+		const auto headerSize = udpHeader.Deserialize(buffer, bufferSize);
+		if (headerSize == 0 || headerSize != udpHeader.SerializedLength())
+		{
+			DEBUG_LOG(
+				"Dropped UDP header (invalid buffer size %lu, expected at least %lu)\r\n",
+				bufferSize, Header::SerializedLength()
+			);
+			return;
+		}
+		if (udpHeader.length <= bufferSize)
+		{
+			DEBUG_LOG(
+				"Dropped UDP packet (invalid buffer size %lu, expected at least %lu)\r\n",
+				bufferSize, udpHeader.length
+			);
+			return;
+		}
 
 		if (udpHeader.destinationPort == Port::DhcpClient)
 		{
 			Dhcp::HandlePacket(
 				ethernetHeader,
 				buffer + udpHeader.SerializedLength(),
-				size - udpHeader.SerializedLength()
+				bufferSize - udpHeader.SerializedLength()
 			);
 		}
 		else if (udpHeader.destinationPort == Port::Tftp)
@@ -64,7 +92,8 @@ namespace Net::Udp
 				ethernetHeader,
 				ipv4Header,
 				udpHeader,
-				buffer + udpHeader.SerializedLength()
+				buffer + udpHeader.SerializedLength(),
+				bufferSize - udpHeader.SerializedLength()
 			);
 		}
 	}

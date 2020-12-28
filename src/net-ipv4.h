@@ -42,13 +42,14 @@ namespace Net::Ipv4
 			return 20;
 		}
 
-		size_t Serialize(uint8_t* buffer) const;
-		static Header Deserialize(const uint8_t* buffer);
+		size_t Serialize(uint8_t* buffer, const size_t bufferSize) const;
+		static size_t Deserialize(
+			Header& out, const uint8_t* buffer, const size_t bufferSize);
 	};
 
 	void HandlePacket(
 		const Ethernet::Header& ethernetHeader,
 		const uint8_t* buffer,
-		const size_t size
+		const size_t bufferSize
 	);
 } // namespace Net::Ipv4

@@ -33,8 +33,8 @@ namespace Net::Udp
 				sizeof(checksum);
 		}
 
-		size_t Serialize(uint8_t* buffer) const;
-		static Header Deserialize(const uint8_t* buffer);
+		size_t Serialize(uint8_t* buffer, const size_t size) const;
+		size_t Deserialize(const uint8_t* buffer, const size_t size);
 	};
 
 	void HandlePacket(

@@ -9,6 +9,7 @@
 #include "net-udp.h"
 #include "net.h"
 
+#include "debug.h"
 #include "ff.h"
 #include "types.h"
 #include <uspi.h>
@@ -20,16 +21,28 @@ namespace Net::Tftp
 	static bool shouldReboot = false;
 	static uint32_t currentBlockNumber = -1;
 
-	static std::unique_ptr<Packet> handleTftpWriteRequest(const uint8_t* data)
-	{
-		auto packet = WriteReadRequestPacket::Deserialize(data);
+	Packet::Packet() : opcode(static_cast<Opcode>(0)) {}
+	Packet::Packet(const Opcode opcode) : opcode(opcode) {}
+
+	static std::unique_ptr<Packet> handleTftpWriteRequest(
+		const uint8_t* data, const size_t dataSize
+	) {
+		WriteReadRequestPacket packet;
+		const auto size = packet.Deserialize(data, dataSize);
+		if (size == 0)
+		{
+			DEBUG_LOG(
+				"Dropped TFTP packet (invalid buffer size %lu, expected at least %lu)\r\n",
+				dataSize, sizeof(WriteReadRequestPacket::opcode) + 2
+			)
+			return nullptr;
+		}
 
 		// TODO Implement netscii, maybe
 		if (packet.mode != "octet")
 		{
-			return std::unique_ptr<ErrorPacket>(
-				new ErrorPacket(0, "please use mode octet")
-			);
+			const auto pointer = new ErrorPacket(0, "please use mode octet");
+			return std::unique_ptr<ErrorPacket>(pointer);
 		}
 
 		currentBlockNumber = 0;
@@ -79,10 +92,14 @@ namespace Net::Tftp
 	static std::unique_ptr<Packet> handleTftpData(const uint8_t* buffer, size_t size)
 	{
 		DataPacket packet;
-		const auto tftpSize = DataPacket::Deserialize(packet, buffer, size);
-		if (size == 0)
+		const auto tftpSize = packet.Deserialize(buffer, size);
+		if (tftpSize == 0)
 		{
-			// TODO log
+			DEBUG_LOG(
+				"Dropped TFTP data packet "
+				"(invalid buffer size %lu, expected at least %lu)\r\n",
+				size, sizeof(packet.opcode) + sizeof(packet.blockNumber)
+			)
 			return nullptr;
 		}
 
@@ -120,20 +137,28 @@ namespace Net::Tftp
 		const Ethernet::Header ethernetReqHeader,
 		const Ipv4::Header ipv4ReqHeader,
 		const Udp::Header udpReqHeader,
-		const uint8_t* data
+		const uint8_t* reqBuffer,
+		const size_t reqBufferSize
 	) {
-		const auto opcode = static_cast<Opcode>(data[0] << 8 | data[1]);
+		const auto opcode = static_cast<Opcode>(reqBuffer[0] << 8 | reqBuffer[1]);
 		std::unique_ptr<Packet> response;
-		bool last = false;
+
+		const auto payloadSize = udpReqHeader.length - udpReqHeader.SerializedLength();
+		if (reqBufferSize < payloadSize)
+		{
+			DEBUG_LOG(
+				"Dropped TFTP packet (invalid buffer size %lu, expected at least %lu)\r\n",
+				reqBufferSize, payloadSize
+			);
+		}
 
 		if (opcode == Opcode::WriteRequest)
 		{
-			response = handleTftpWriteRequest(data);
+			response = handleTftpWriteRequest(reqBuffer, payloadSize);
 		}
 		else if (opcode == Opcode::Data)
 		{
-			const auto length = udpReqHeader.length - Udp::Header::SerializedLength();
-			response = handleTftpData(data, length);
+			response = handleTftpData(reqBuffer, payloadSize);
 		}
 		else
 		{
@@ -164,9 +189,9 @@ namespace Net::Tftp
 			size_t size = 0;
 			uint8_t buffer[USPI_FRAME_BUFFER_SIZE];
 			size += ethernetRespHeader.Serialize(buffer + size, sizeof(buffer) - size);
-			size += ipv4RespHeader.Serialize(buffer + size);
-			size += udpRespHeader.Serialize(buffer + size);
-			size += response->Serialize(buffer + size);
+			size += ipv4RespHeader.Serialize(buffer + size, sizeof(buffer) - size);
+			size += udpRespHeader.Serialize(buffer + size, sizeof(buffer) - size);
+			size += response->Serialize(buffer + size, sizeof(buffer) - size);
 
 			const auto expectedSize =
 				ethernetRespHeader.SerializedLength() +
@@ -179,28 +204,29 @@ namespace Net::Tftp
 			USPiSendFrame(buffer, size);
 		}
 
-		if (last && shouldReboot)
-		{
-			// TODO eww
-			extern void Reboot_Pi();
-			Reboot_Pi();
-		}
+		// TODO Reboot the Pi when a system file was received
 	}
 
 	//
 	// WriteReadRequestPacket
 	//
-	WriteReadRequestPacket::WriteReadRequestPacket(const Opcode opcode) :
-		Packet(opcode)
+	WriteReadRequestPacket::WriteReadRequestPacket() : Packet() {}
+	WriteReadRequestPacket::WriteReadRequestPacket(const Opcode opcode) : Packet(opcode)
 	{}
 
 	size_t WriteReadRequestPacket::SerializedLength() const
 	{
-		return Packet::SerializedLength() + filename.size() + 1 + mode.size() + 1;
+		return sizeof(opcode) + filename.size() + 1 + mode.size() + 1;
 	}
 
-	size_t WriteReadRequestPacket::Serialize(uint8_t* buffer) const
+	size_t WriteReadRequestPacket::Serialize(uint8_t* buffer, const size_t bufferSize)
+		const
 	{
+		if (bufferSize < SerializedLength())
+		{
+			return 0;
+		}
+
 		size_t i = 0;
 		buffer[i++] = static_cast<uint16_t>(opcode) >> 8;
 		buffer[i++] = static_cast<uint16_t>(opcode);
@@ -214,21 +240,28 @@ namespace Net::Tftp
 		return i;
 	}
 
-	WriteReadRequestPacket WriteReadRequestPacket::Deserialize(const uint8_t* buffer)
-	{
+	size_t WriteReadRequestPacket::Deserialize(
+		const uint8_t* buffer, const size_t bufferSize
+	) {
+		// Can't use SerializedLength here, as it's variable.
+		// Check for each field instead.
 		size_t i = 0;
 
-		const auto opcode = static_cast<Opcode>(buffer[i] << 8 | buffer[i + 1]);
-		WriteReadRequestPacket self(opcode);
+		if (sizeof(Opcode) >= bufferSize - i) return 0;
+		opcode = static_cast<Opcode>(buffer[i] << 8 | buffer[i + 1]);
 		i += 2;
 
-		self.filename = reinterpret_cast<const char*>(buffer + i);
-		i += self.filename.size() + 1;
+		const char* filenameStr = reinterpret_cast<const char*>(buffer + i);
+		if (std::strlen(filenameStr) + 1 >= bufferSize - i) return 0;
+		filename = std::string(filenameStr);
+		i += filename.size() + 1;
 
-		self.mode = reinterpret_cast<const char*>(buffer + i);
-		i += self.mode.size() + 1;
+		const char* modeStr = reinterpret_cast<const char*>(buffer + i);
+		if (std::strlen(modeStr) + 1 >= bufferSize - i) return 0;
+		mode = std::string(modeStr);
+		i += mode.size() + 1;
 
-		return self;
+		return i;
 	}
 
 	//
@@ -241,11 +274,16 @@ namespace Net::Tftp
 
 	size_t ErrorPacket::SerializedLength() const
 	{
-		return Packet::SerializedLength() + sizeof(errorCode) + message.size() + 1;
+		return sizeof(opcode) + sizeof(errorCode) + message.size() + 1;
 	}
 
-	size_t ErrorPacket::Serialize(uint8_t* buffer) const
+	size_t ErrorPacket::Serialize(uint8_t* buffer, const size_t bufferSize) const
 	{
+		if (bufferSize < SerializedLength())
+		{
+			return 0;
+		}
+
 		size_t i = 0;
 		buffer[i++] = static_cast<uint16_t>(opcode) >> 8;
 		buffer[i++] = static_cast<uint16_t>(opcode);
@@ -261,9 +299,7 @@ namespace Net::Tftp
 	//
 	// AcknowledgementPacket
 	//
-	AcknowledgementPacket::AcknowledgementPacket() :
-		Packet(Opcode::Acknowledgement)
-	{}
+	AcknowledgementPacket::AcknowledgementPacket() : Packet(Opcode::Acknowledgement) {}
 
 	AcknowledgementPacket::AcknowledgementPacket(uint16_t blockNumber) :
 		Packet(Opcode::Acknowledgement), blockNumber(blockNumber)
@@ -271,11 +307,17 @@ namespace Net::Tftp
 
 	size_t AcknowledgementPacket::SerializedLength() const
 	{
-		return Packet::SerializedLength() + sizeof(blockNumber);
+		return sizeof(opcode) + sizeof(blockNumber);
 	}
 
-	size_t AcknowledgementPacket::Serialize(uint8_t* buffer) const
+	size_t AcknowledgementPacket::Serialize(uint8_t* buffer, const size_t bufferSize)
+		const
 	{
+		if (bufferSize < SerializedLength())
+		{
+			return 0;
+		}
+
 		size_t i = 0;
 		buffer[i++] = static_cast<uint16_t>(opcode) >> 8;
 		buffer[i++] = static_cast<uint16_t>(opcode);
@@ -290,8 +332,18 @@ namespace Net::Tftp
 	DataPacket::DataPacket() : Packet(Opcode::Data), blockNumber(0)
 	{}
 
-	size_t DataPacket::Serialize(uint8_t* buffer) const
+	size_t DataPacket::SerializedLength() const
 	{
+		return sizeof(opcode) + sizeof(blockNumber) + data.size();
+	}
+
+	size_t DataPacket::Serialize(uint8_t* buffer, const size_t bufferSize) const
+	{
+		if (bufferSize <= SerializedLength())
+		{
+			return 0;
+		}
+
 		size_t i = 0;
 		buffer[i++] = static_cast<uint16_t>(opcode) >> 8;
 		buffer[i++] = static_cast<uint16_t>(opcode);
@@ -304,17 +356,15 @@ namespace Net::Tftp
 		return i;
 	}
 
-	size_t DataPacket::Deserialize(
-		DataPacket& out, const uint8_t* buffer, size_t size
-	) {
-		if (size < sizeof(opcode) + sizeof(blockNumber))
+	size_t DataPacket::Deserialize(const uint8_t* buffer, const size_t bufferSize) {
+		if (bufferSize < sizeof(opcode) + sizeof(blockNumber))
 		{
 			return 0;
 		}
 
-		out.opcode = static_cast<Opcode>(buffer[0] << 8 | buffer[1]);
-		out.blockNumber = buffer[2] << 8 | buffer[3];
-		out.data = std::vector<uint8_t>(buffer + 4, buffer + size);
-		return size;
+		opcode = static_cast<Opcode>(buffer[0] << 8 | buffer[1]);
+		blockNumber = buffer[2] << 8 | buffer[3];
+		data = std::vector<uint8_t>(buffer + 4, buffer + bufferSize);
+		return bufferSize;
 	}
 } // namespace Net::Tftp

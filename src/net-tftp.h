@@ -21,15 +21,10 @@ namespace Net::Tftp
 	{
 		Opcode opcode;
 
-		Packet(Opcode opcode) : opcode(opcode)
-		{}
-
-		virtual size_t SerializedLength() const
-		{
-			return sizeof(opcode);
-		}
-
-		virtual size_t Serialize(uint8_t* buffer) const = 0;
+		Packet();
+		Packet(Opcode opcode);
+		virtual size_t SerializedLength() const = 0;
+		virtual size_t Serialize(uint8_t* buffer, const size_t bufferSize) const = 0;
 	};
 
 	struct WriteReadRequestPacket : public Packet
@@ -37,10 +32,11 @@ namespace Net::Tftp
 		std::string filename;
 		std::string mode;
 
+		WriteReadRequestPacket();
 		WriteReadRequestPacket(const Opcode opcode);
 		size_t SerializedLength() const override;
-		size_t Serialize(uint8_t* buffer) const override;
-		static WriteReadRequestPacket Deserialize(const uint8_t* buffer);
+		size_t Serialize(uint8_t* buffer, const size_t bufferSize) const override;
+		size_t Deserialize(const uint8_t* buffer, const size_t bufferSize);
 	};
 
 	struct ErrorPacket : public Packet
@@ -51,7 +47,7 @@ namespace Net::Tftp
 		ErrorPacket();
 		ErrorPacket(uint16_t errorCode, std::string message);
 		size_t SerializedLength() const override;
-		size_t Serialize(uint8_t* buffer) const override;
+		size_t Serialize(uint8_t* buffer, const size_t bufferSize) const override;
 	};
 
 	struct AcknowledgementPacket : public Packet
@@ -61,7 +57,7 @@ namespace Net::Tftp
 		AcknowledgementPacket();
 		AcknowledgementPacket(uint16_t blockNumber);
 		size_t SerializedLength() const override;
-		size_t Serialize(uint8_t* buffer) const override;
+		size_t Serialize(uint8_t* buffer, const size_t bufferSize) const override;
 	};
 
 	struct DataPacket : public Packet
@@ -70,15 +66,16 @@ namespace Net::Tftp
 		std::vector<uint8_t> data;
 
 		DataPacket();
-		size_t Serialize(uint8_t* buffer) const override;
-		static size_t Deserialize(
-			DataPacket& out, const uint8_t* buffer, size_t length);
+		size_t SerializedLength() const override;
+		size_t Serialize(uint8_t* buffer, const size_t bufferSize) const override;
+		size_t Deserialize(const uint8_t* buffer, const size_t bufferSize);
 	};
 
 	void HandlePacket(
 		const Ethernet::Header ethernetReqHeader,
 		const Ipv4::Header ipv4ReqHeader,
 		const Udp::Header udpReqHeader,
-		const uint8_t* buffer
+		const uint8_t* data,
+		const size_t dataSize
 	);
 } // namespace Net::Tftp
