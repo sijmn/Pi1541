@@ -36,7 +36,8 @@ namespace Net::Dhcp
 
 	size_t Header::Serialize(uint8_t* buffer, const size_t size) const
 	{
-		if (size < Header::SerializedLength()) {
+		if (size < Header::SerializedLength())
+		{
 			return 0;
 		}
 
@@ -84,7 +85,8 @@ namespace Net::Dhcp
 	size_t Header::Deserialize(
 		Header& out, const uint8_t* buffer, const size_t size
 	) {
-		if (size < SerializedLength()) {
+		if (size < SerializedLength())
+		{
 			return 0;
 		}
 
@@ -158,7 +160,8 @@ namespace Net::Dhcp
 		size += udpHeader.Serialize(buffer + size);
 		size += dhcpHeader.Serialize(buffer + size, USPI_FRAME_BUFFER_SIZE - size);
 
-		if (size != expectedSize) {
+		if (size != expectedSize)
+		{
 			// TODO Log
 			return;
 		}
@@ -212,7 +215,8 @@ namespace Net::Dhcp
 		size += udpHeader.Serialize(buffer + size);
 		size += dhcpHeader.Serialize(buffer + size, USPI_FRAME_BUFFER_SIZE - size);
 
-		if (size != expectedSize) {
+		if (size != expectedSize)
+		{
 			// TODO Log
 			return;
 		}
@@ -254,7 +258,8 @@ namespace Net::Dhcp
 	) {
 		auto dhcpHeader = Header();
 		const auto dhcpSize = Header::Deserialize(dhcpHeader, buffer, size);
-		if (dhcpSize == 0) {
+		if (dhcpSize == 0)
+		{
 			// TODO log
 			return;
 		}

@@ -4,7 +4,8 @@
 #include <vector>
 #include "net-udp.h"
 
-namespace Net::Tftp {
+namespace Net::Tftp
+{
 	const size_t TFTP_BLOCK_SIZE = 512;
 
 	enum class Opcode : uint16_t
@@ -20,9 +21,11 @@ namespace Net::Tftp {
 	{
 		Opcode opcode;
 
-		Packet(Opcode opcode) : opcode(opcode) {}
+		Packet(Opcode opcode) : opcode(opcode)
+		{}
 
-		virtual size_t SerializedLength() const {
+		virtual size_t SerializedLength() const
+		{
 			return sizeof(opcode);
 		}
 

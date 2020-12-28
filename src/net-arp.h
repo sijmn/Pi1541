@@ -5,7 +5,8 @@
 
 namespace Net::Arp
 {
-	enum Operation {
+	enum Operation
+	{
 		ARP_OPERATION_REQUEST = 1,
 		ARP_OPERATION_REPLY = 2,
 	};

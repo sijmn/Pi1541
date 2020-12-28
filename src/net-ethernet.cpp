@@ -1,7 +1,8 @@
 #include <cstring>
 #include "net-ethernet.h"
 
-namespace Net::Ethernet {
+namespace Net::Ethernet
+{
 	Header::Header()
 	{}
 

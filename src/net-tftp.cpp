@@ -296,7 +296,8 @@ namespace Net::Tftp
 	size_t DataPacket::Deserialize(
 		DataPacket& out, const uint8_t* buffer, size_t size
 	) {
-		if (size < sizeof(opcode) + sizeof(blockNumber)) {
+		if (size < sizeof(opcode) + sizeof(blockNumber))
+		{
 			return 0;
 		}
 
