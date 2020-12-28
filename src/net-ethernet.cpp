@@ -52,4 +52,4 @@ namespace Net::Ethernet
 		self.type = buffer[12] << 8 | buffer[13];
 		return self;
 	}
-}; // namespace Net::Ethernet
+} // namespace Net::Ethernet

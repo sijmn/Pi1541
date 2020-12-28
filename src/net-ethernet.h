@@ -31,4 +31,4 @@ namespace Net::Ethernet
 		size_t Serialize(uint8_t* buffer) const;
 		static Header Deserialize(const uint8_t* buffer);
 	};
-}; // namespace Net::Ethernet
+} // namespace Net::Ethernet

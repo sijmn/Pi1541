@@ -306,4 +306,4 @@ namespace Net::Tftp
 		out.data = std::vector<uint8_t>(buffer + 4, buffer + size);
 		return size;
 	}
-}; // namespace Net::Tftp
+} // namespace Net::Tftp

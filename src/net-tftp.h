@@ -81,4 +81,4 @@ namespace Net::Tftp
 		const Udp::Header udpReqHeader,
 		const uint8_t* buffer
 	);
-}; // namespace Net::Tftp
+} // namespace Net::Tftp

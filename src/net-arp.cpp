@@ -101,8 +101,11 @@ namespace Net::Arp
 	}
 
 	void SendReply(
-		Utils::MacAddress targetMac, Utils::MacAddress senderMac, uint32_t targetIp, uint32_t senderIp)
-	{
+		Utils::MacAddress targetMac,
+		Utils::MacAddress senderMac,
+		uint32_t targetIp,
+		uint32_t senderIp
+	) {
 		SendPacket(ARP_OPERATION_REPLY, targetMac, senderMac, targetIp, senderIp);
 	}
 
@@ -143,4 +146,4 @@ namespace Net::Arp
 	}
 
 	std::unordered_map<uint32_t, Utils::MacAddress> ArpTable;
-}; // namespace Net::Arp
+} // namespace Net::Arp

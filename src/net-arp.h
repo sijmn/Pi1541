@@ -73,4 +73,4 @@ namespace Net::Arp
 	void SendAnnouncement(Utils::MacAddress mac, uint32_t ip);
 
 	extern std::unordered_map<uint32_t, Utils::MacAddress> ArpTable;
-}; // namespace Net::Arp
+} // namespace Net::Arp

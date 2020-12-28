@@ -68,4 +68,4 @@ namespace Net::Udp
 			);
 		}
 	}
-}; // namespace Net::Udp
+} // namespace Net::Udp

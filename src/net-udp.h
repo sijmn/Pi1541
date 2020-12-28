@@ -43,4 +43,4 @@ namespace Net::Udp
 		const uint8_t* buffer,
 		const size_t size
 	);
-}; // namespace Net::Udp
+} // namespace Net::Udp

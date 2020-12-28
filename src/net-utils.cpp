@@ -124,4 +124,4 @@ namespace Net::Utils
 
 		return macAddress;
 	}
-}; // namespace Net::Utils
+} // namespace Net::Utils
