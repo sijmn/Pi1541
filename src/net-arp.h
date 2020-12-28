@@ -14,7 +14,7 @@ namespace Net::Arp
 	struct Packet
 	{
 		uint16_t hardwareType;
-		uint16_t protocolType;
+		Ethernet::EtherType protocolType;
 		uint8_t hardwareAddressLength;
 		uint8_t protocolAddressLength;
 		uint16_t operation;

@@ -39,7 +39,7 @@ namespace Net::Udp
 
 	void HandlePacket(
 		const Ethernet::Header ethernetHeader,
-		const Ipv4Header ipv4Header,
+		const Ipv4::Header ipv4Header,
 		const uint8_t* buffer,
 		const size_t size
 	);

@@ -1,4 +1,5 @@
 #include <memory>
+#include <cstring>
 
 #include "ff.h"
 #include "net-arp.h"
@@ -116,7 +117,7 @@ namespace Net::Tftp
 
 	void HandlePacket(
 		const Ethernet::Header ethernetReqHeader,
-		const Ipv4Header ipv4ReqHeader,
+		const Ipv4::Header ipv4ReqHeader,
 		const Udp::Header udpReqHeader,
 		const uint8_t* data
 	) {
@@ -147,16 +148,16 @@ namespace Net::Tftp
 				udpReqHeader.sourcePort,
 				response->SerializedLength() + Udp::Header::SerializedLength()
 			);
-			Ipv4Header ipv4RespHeader(
-				IP_PROTO_UDP,
+			Ipv4::Header ipv4RespHeader(
+				Ipv4::Protocol::Udp,
 				Utils::Ipv4Address,
 				ipv4ReqHeader.sourceIp,
-				udpRespHeader.length + Ipv4Header::SerializedLength()
+				udpRespHeader.length + Ipv4::Header::SerializedLength()
 			);
 			Ethernet::Header ethernetRespHeader(
 				Arp::ArpTable[ipv4RespHeader.destinationIp],
 				Utils::GetMacAddress(),
-				Ethernet::ETHERTYPE_IPV4
+				Ethernet::EtherType::Ipv4
 			);
 
 			size_t i = 0;

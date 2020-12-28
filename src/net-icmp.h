@@ -1,43 +1,49 @@
 #pragma once
 #include "net.h"
 
-enum IcmpType
+namespace Net::Icmp
 {
-	ICMP_ECHO_REPLY = 0,
-	ICMP_ECHO_REQUEST = 8,
-};
-
-struct IcmpPacketHeader
-{
-	std::uint8_t type;
-	std::uint8_t code;
-	std::uint16_t checksum;
-
-	IcmpPacketHeader();
-	IcmpPacketHeader(std::uint8_t type, std::uint8_t code);
-
-	constexpr static std::size_t SerializedLength()
+	enum class Type : uint8_t
 	{
-		return sizeof(type) + sizeof(code) + sizeof(checksum);
-	}
+		EchoReply = 0,
+		EchoRequest = 8,
+	};
 
-	std::size_t Serialize(uint8_t* buffer) const;
-	static IcmpPacketHeader Deserialize(const uint8_t* buffer);
-};
-
-struct IcmpEchoHeader
-{
-	uint16_t identifier;
-	uint16_t sequenceNumber;
-
-	IcmpEchoHeader();
-	IcmpEchoHeader(uint16_t identifier, uint16_t sequenceNumber);
-
-	constexpr static size_t SerializedLength()
+	struct PacketHeader
 	{
-		return sizeof(identifier) + sizeof(sequenceNumber);
-	}
+		Type type;
+		uint8_t code;
+		uint16_t checksum;
 
-	size_t Serialize(uint8_t* buffer) const;
-	static IcmpEchoHeader Deserialize(const uint8_t* buffer);
-};
+		PacketHeader();
+		PacketHeader(Type type, uint8_t code);
+
+		constexpr static size_t SerializedLength()
+		{
+			return sizeof(type) + sizeof(code) + sizeof(checksum);
+		}
+
+		size_t Serialize(uint8_t* buffer) const;
+		static PacketHeader Deserialize(const uint8_t* buffer);
+	};
+
+	struct EchoHeader
+	{
+		uint16_t identifier;
+		uint16_t sequenceNumber;
+
+		EchoHeader();
+		EchoHeader(uint16_t identifier, uint16_t sequenceNumber);
+
+		constexpr static size_t SerializedLength()
+		{
+			return sizeof(identifier) + sizeof(sequenceNumber);
+		}
+
+		size_t Serialize(uint8_t* buffer) const;
+		static EchoHeader Deserialize(const uint8_t* buffer);
+	};
+
+	void SendEchoRequest(Utils::MacAddress mac, uint32_t ip);
+	void HandlePacket(const uint8_t* buffer);
+} // namespace Net::Icmp

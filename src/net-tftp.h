@@ -77,7 +77,7 @@ namespace Net::Tftp
 
 	void HandlePacket(
 		const Ethernet::Header ethernetReqHeader,
-		const Ipv4Header ipv4ReqHeader,
+		const Ipv4::Header ipv4ReqHeader,
 		const Udp::Header udpReqHeader,
 		const uint8_t* buffer
 	);

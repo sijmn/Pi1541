@@ -389,11 +389,12 @@ void updateNetwork()
 
 	switch (ethernetHeader.type)
 	{
-	case Net::Ethernet::ETHERTYPE_ARP:
+	case Net::Ethernet::EtherType::Arp:
 		Net::Arp::HandlePacket(ethernetHeader, ipBuffer + offset);
 		break;
-	case Net::Ethernet::ETHERTYPE_IPV4:
-		HandleIpv4Packet(ethernetHeader, ipBuffer + offset, sizeof(ipBuffer) - offset);
+	case Net::Ethernet::EtherType::Ipv4:
+		Net::Ipv4::HandlePacket(
+			ethernetHeader, ipBuffer + offset, sizeof(ipBuffer) - offset);
 		break;
 	}
 }

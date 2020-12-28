@@ -13,7 +13,7 @@ namespace Net::Arp
 
 	Packet::Packet(uint16_t operation) :
 		hardwareType(1), // Ethernet
-		protocolType(Ethernet::ETHERTYPE_IPV4),
+		protocolType(Ethernet::EtherType::Ipv4),
 		hardwareAddressLength(6),
 		protocolAddressLength(4),
 		operation(operation)
@@ -23,8 +23,8 @@ namespace Net::Arp
 	{
 		buffer[0] = hardwareType >> 8;
 		buffer[1] = hardwareType;
-		buffer[2] = protocolType >> 8;
-		buffer[3] = protocolType;
+		buffer[2] = static_cast<uint16_t>(protocolType) >> 8;
+		buffer[3] = static_cast<uint16_t>(protocolType);
 		buffer[4] = hardwareAddressLength;
 		buffer[5] = protocolAddressLength;
 		buffer[6] = operation >> 8;
@@ -53,7 +53,8 @@ namespace Net::Arp
 		Packet self;
 
 		self.hardwareType = buffer[0] << 8 | buffer[1];
-		self.protocolType = buffer[2] << 8 | buffer[3];
+		self.protocolType =
+			static_cast<Ethernet::EtherType>(buffer[2] << 8 | buffer[3]);
 		self.hardwareAddressLength = buffer[4];
 		self.protocolAddressLength = buffer[5];
 		self.operation = buffer[6] << 8 | buffer[7];
@@ -82,7 +83,7 @@ namespace Net::Arp
 		arpPacket.senderIp = senderIp;
 
 		Ethernet::Header ethernetHeader(
-			senderMac, targetMac, Ethernet::ETHERTYPE_ARP);
+			senderMac, targetMac, Ethernet::EtherType::Arp);
 
 		uint8_t buffer[USPI_FRAME_BUFFER_SIZE];
 		size_t size = 0;
@@ -122,7 +123,7 @@ namespace Net::Arp
 
 		if (
 			arpPacket.hardwareType == 1 &&
-			arpPacket.protocolType == Ethernet::ETHERTYPE_IPV4 &&
+			arpPacket.protocolType == Ethernet::EtherType::Ipv4 &&
 			arpPacket.operation == ARP_OPERATION_REQUEST &&
 			arpPacket.targetIp == Utils::Ipv4Address)
 		{
@@ -136,7 +137,7 @@ namespace Net::Arp
 
 		else if (
 			arpPacket.hardwareType == 1 &&
-			arpPacket.protocolType == Ethernet::ETHERTYPE_IPV4 &&
+			arpPacket.protocolType == Ethernet::EtherType::Ipv4 &&
 			arpPacket.operation == ARP_OPERATION_REPLY &&
 			arpPacket.targetIp == Utils::Ipv4Address &&
 			arpPacket.targetMac == macAddress)

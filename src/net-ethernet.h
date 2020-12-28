@@ -6,22 +6,22 @@ namespace Net::Ethernet
 {
 	using Utils::MacAddress;
 
-	enum EtherType
+	enum class EtherType : uint16_t
 	{
-		ETHERTYPE_IPV4 = 0x0800,
-		ETHERTYPE_ARP = 0x0806,
+		Ipv4 = 0x0800,
+		Arp = 0x0806,
 	};
 
 	struct Header
 	{
 		MacAddress macDestination;
 		MacAddress macSource;
-		uint16_t type;
+		EtherType type;
 
 		Header();
-		Header(uint16_t type);
-		Header(MacAddress macSource, uint16_t type);
-		Header(MacAddress macDestination, MacAddress macSource, uint16_t type);
+		Header(EtherType type);
+		Header(MacAddress macSource, EtherType type);
+		Header(MacAddress macDestination, MacAddress macSource, EtherType type);
 
 		constexpr static size_t SerializedLength()
 		{

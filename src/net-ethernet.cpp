@@ -6,14 +6,14 @@ namespace Net::Ethernet
 	Header::Header()
 	{}
 
-	Header::Header(uint16_t type) :
+	Header::Header(EtherType type) :
 		macDestination(Utils::MacBroadcast),
 		macSource{0, 0, 0, 0, 0, 0},
 		type(type)
 	{}
 
 	Header::Header(
-		MacAddress macSource, uint16_t type
+		MacAddress macSource, EtherType type
 	) :
 		macDestination(Utils::MacBroadcast),
 		macSource(macSource),
@@ -21,7 +21,7 @@ namespace Net::Ethernet
 	{}
 
 	Header::Header(
-		MacAddress macDestination, MacAddress macSource, uint16_t type
+		MacAddress macDestination, MacAddress macSource, EtherType type
 	) :
 		macDestination(macDestination),
 		macSource(macSource),
@@ -38,8 +38,8 @@ namespace Net::Ethernet
 		std::memcpy(buffer + i, macSource.data(), macSource.size());
 		i += sizeof(macSource);
 
-		buffer[i++] = type >> 8;
-		buffer[i++] = type;
+		buffer[i++] = static_cast<uint16_t>(type) >> 8;
+		buffer[i++] = static_cast<uint16_t>(type);
 
 		return i;
 	}
@@ -49,7 +49,7 @@ namespace Net::Ethernet
 		Header self;
 		std::memcpy(self.macDestination.data(), buffer + 0, self.macDestination.size());
 		std::memcpy(self.macSource.data(), buffer + 6, self.macSource.size());
-		self.type = buffer[12] << 8 | buffer[13];
+		self.type = static_cast<EtherType>(buffer[12] << 8 | buffer[13]);
 		return self;
 	}
 } // namespace Net::Ethernet

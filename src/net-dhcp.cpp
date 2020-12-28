@@ -1,9 +1,12 @@
+#include <random>
+#include <cassert>
+#include <cstring>
+
 #include "net-dhcp.h"
 #include "net-udp.h"
 #include "net-ipv4.h"
 #include "net-ethernet.h"
-#include <random>
-#include <cassert>
+
 #include "types.h"
 #include <uspi.h>
 #include <uspios.h>
@@ -138,14 +141,11 @@ namespace Net::Dhcp
 		const Udp::Header udpHeader(
 			Udp::Port::DhcpClient, Udp::Port::DhcpServer, udpLength);
 
-		size_t ipv4Length = udpLength + Ipv4Header::SerializedLength();
-		const Ipv4Header ipv4Header(
-			IP_PROTO_UDP, clientIpAddress, serverIpAddress, ipv4Length);
+		size_t ipv4Length = udpLength + Ipv4::Header::SerializedLength();
+		const Ipv4::Header ipv4Header(
+			Ipv4::Protocol::Udp, clientIpAddress, serverIpAddress, ipv4Length);
 		const Ethernet::Header ethernetHeader(
-			serverMacAddress,
-			Utils::GetMacAddress(),
-			Ethernet::ETHERTYPE_IPV4
-		);
+			serverMacAddress, Utils::GetMacAddress(), Ethernet::EtherType::Ipv4);
 
 		uint8_t buffer[USPI_FRAME_BUFFER_SIZE];
 		size_t size = 0;
@@ -197,10 +197,10 @@ namespace Net::Dhcp
 		const Udp::Header udpHeader(
 			Udp::Port::DhcpClient, Udp::Port::DhcpServer, udpLength);
 
-		size_t ipv4Length = udpLength + Ipv4Header::SerializedLength();
-		const Ipv4Header ipv4Header(IP_PROTO_UDP, 0, 0xFFFFFFFF, ipv4Length);
+		size_t ipv4Length = udpLength + Ipv4::Header::SerializedLength();
+		const Ipv4::Header ipv4Header(Ipv4::Protocol::Udp, 0, 0xFFFFFFFF, ipv4Length);
 		const Ethernet::Header ethernetHeader(
-			Utils::GetMacAddress(), Ethernet::ETHERTYPE_IPV4);
+			Utils::GetMacAddress(), Ethernet::EtherType::Ipv4);
 
 		uint8_t buffer[USPI_FRAME_BUFFER_SIZE];
 		size_t size = 0;
