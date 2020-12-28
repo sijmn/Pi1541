@@ -9,22 +9,23 @@ namespace Net::Icmp
 		EchoRequest = 8,
 	};
 
-	struct PacketHeader
+	struct Header
 	{
 		Type type;
 		uint8_t code;
 		uint16_t checksum;
 
-		PacketHeader();
-		PacketHeader(Type type, uint8_t code);
+		Header();
+		Header(Type type, uint8_t code);
 
 		constexpr static size_t SerializedLength()
 		{
 			return sizeof(type) + sizeof(code) + sizeof(checksum);
 		}
 
-		size_t Serialize(uint8_t* buffer) const;
-		static PacketHeader Deserialize(const uint8_t* buffer);
+		size_t Serialize(uint8_t* buffer, const size_t bufferSize) const;
+		static size_t Deserialize(
+			Header& out, const uint8_t* buffer, const size_t bufferSize);
 	};
 
 	struct EchoHeader
@@ -40,10 +41,11 @@ namespace Net::Icmp
 			return sizeof(identifier) + sizeof(sequenceNumber);
 		}
 
-		size_t Serialize(uint8_t* buffer) const;
-		static EchoHeader Deserialize(const uint8_t* buffer);
+		size_t Serialize(uint8_t* buffer, const size_t bufferSize) const;
+		static size_t Deserialize(
+			EchoHeader& out, const uint8_t* buffer, const size_t bufferSize);
 	};
 
-	void SendEchoRequest(Utils::MacAddress mac, uint32_t ip);
+	void SendEchoRequest(const Utils::MacAddress mac, const uint32_t ip);
 	void HandlePacket(const uint8_t* buffer, const size_t bufferSize);
 } // namespace Net::Icmp
