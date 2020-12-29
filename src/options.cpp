@@ -160,6 +160,8 @@ Options::Options(void)
         , buttonInsert(5)
 	, rotaryEncoderEnable(0) //ROTARY:
 	, rotaryEncoderInvert(0) //ROTARY:
+	, dhcpEnable(1)
+	, ipAddress{}
 {
 	autoMountImageName[0] = 0;
 	strcpy(ROMFontName, "chargen");
@@ -252,6 +254,7 @@ void Options::Process(char* buffer)
 		ELSE_CHECK_DECIMAL_OPTION(buttonInsert)
 		ELSE_CHECK_DECIMAL_OPTION(rotaryEncoderEnable) //ROTARY:
 		ELSE_CHECK_DECIMAL_OPTION(rotaryEncoderInvert) //ROTARY:
+		ELSE_CHECK_DECIMAL_OPTION(dhcpEnable)
 		else if ((strcasecmp(pOption, "AutoBaseName") == 0))
 		{
 			strncpy(autoBaseName, pValue, 255);
@@ -314,9 +317,13 @@ void Options::Process(char* buffer)
 		{
 			strncpy(ROMNameSlot8, pValue, 255);
 		}
-		else if ((strcasecmp(pOption, "NewDiskType") == 0))
+		else if (strcasecmp(pOption, "NewDiskType") == 0)
 		{
 			strncpy(newDiskType, pValue, 31);
+		}
+		else if (strcasecmp(pOption, "IPAddress") == 0)
+		{
+			strncpy(ipAddress, pValue, sizeof(ipAddress) - 1);
 		}
 	}
 

@@ -1,4 +1,5 @@
 #pragma once
+#include <functional>
 #include "net.h"
 #include "net-ethernet.h"
 
@@ -88,7 +89,7 @@ namespace Net::Dhcp
 			Header& out, const uint8_t* buffer, const size_t size);
 	};
 
-	void SendDiscover();
+	void ObtainIp(std::function<void()>& callback);
 	void HandlePacket(
 		const Ethernet::Header& ethernetHeader,
 		const uint8_t* buffer,

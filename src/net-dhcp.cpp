@@ -166,24 +166,33 @@ namespace Net::Dhcp
 		USPiSendFrame(buffer, size);
 	}
 
-	void discoverTimerHandler(unsigned int hTimer, void* nParam, void* nContext)
+	void discoverTimerHandler(unsigned int, void* callbackVoid, void*)
 	{
 		if (transactionId == 0 || offeredIpAddresses.empty())
 		{
+			// TODO retry every minute or so?
 			return;
 		}
 
 		// Select the first IP address
-		const auto clientIpAddress = offeredIpAddresses[0];
+		Utils::Ipv4Address = offeredIpAddresses[0];
 
 		// Send DHCP Requests to every server with that IP address.
 		for (size_t i = 0; i < serverIpAddresses.size(); i++)
 		{
-			sendRequest(clientIpAddress, serverMacAddresses[i], serverIpAddresses[i]);
+			sendRequest(
+				Utils::Ipv4Address, serverMacAddresses[i], serverIpAddresses[i]);
+		}
+
+		// Run the callback indicating an IP has been obtained
+		if (callbackVoid != nullptr)
+		{
+			const auto& callback = *static_cast<std::function<void()>*>(callbackVoid);
+			callback();
 		}
 	}
 
-	void SendDiscover()
+	void sendDiscover()
 	{
 		transactionId = std::rand();
 		offeredIpAddresses.clear();
@@ -216,9 +225,15 @@ namespace Net::Dhcp
 		assert(size <= sizeof(buffer));
 
 		USPiSendFrame(buffer, size);
+	}
 
-		// Wait a second for responses
-		StartKernelTimer(1 * HZ, discoverTimerHandler, nullptr, nullptr);
+	void ObtainIp(std::function<void()>& callback)
+	{
+		sendDiscover();
+
+		// Wait three seconds for responses
+		const auto callbackVoid = static_cast<void*>(&callback);
+		StartKernelTimer(3 * HZ, discoverTimerHandler, callbackVoid, nullptr);
 	}
 
 	static void handleOfferPacket(

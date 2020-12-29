@@ -367,40 +367,6 @@ void InitialiseLCD()
 //		printf("\E[1ALED %s%d\E[0m Motor %d Track %0d.%d ATN %d DAT %d CLK %d %s\r\n", LED ? termainalTextRed : termainalTextNormal, LED, Motor, Track >> 1, Track & 1 ? 5 : 0, ATN, DATA, CLOCK, roms.ROMNames[romIndex]);
 //}
 
-void updateNetwork()
-{
-	unsigned int frameSize = 0;
-	uint8_t ipBuffer[USPI_FRAME_BUFFER_SIZE];
-	if (!USPiEthernetAvailable() || !USPiReceiveFrame(ipBuffer, &frameSize))
-	{
-		return;
-	}
-
-	Net::Ethernet::Header ethernetHeader;
-	auto headerSize = Net::Ethernet::Header::Deserialize(
-		ethernetHeader, ipBuffer, frameSize);
-	assert(headerSize != 0);
-
-	static bool arpAnnouncementSent = false;
-	if (!arpAnnouncementSent)
-	{
-		Net::Arp::SendAnnouncement(
-			Net::Utils::GetMacAddress(), Net::Utils::Ipv4Address);
-		arpAnnouncementSent = true;
-	}
-
-	switch (ethernetHeader.type)
-	{
-	case Net::Ethernet::EtherType::Arp:
-		Net::Arp::HandlePacket(ethernetHeader, ipBuffer + headerSize);
-		break;
-	case Net::Ethernet::EtherType::Ipv4:
-		Net::Ipv4::HandlePacket(
-			ethernetHeader, ipBuffer + headerSize, frameSize - headerSize);
-		break;
-	}
-}
-
 // This runs on core0 and frees up core1 to just run the emulator.
 // Care must be taken not to crowd out the shared cache with core1 as this could slow down core1 so that it no longer can perform its duties in the 1us timings it requires.
 void UpdateScreen()
@@ -665,7 +631,7 @@ void UpdateScreen()
 		//if (options.GetSupportUARTInput())
 		//	UpdateUartControls(refreshUartStatusDisplay, oldLED, oldMotor, oldATN, oldDATA, oldCLOCK, oldTrack, romIndex);
 
-		updateNetwork();
+		Net::Update();
 
 		// Go back to sleep. The USB irq will wake us up again.
 		__asm ("WFE");
@@ -1984,13 +1950,9 @@ extern "C"
 		inputMappings = new InputMappings();
 		//USPiMouseRegisterStatusHandler(MouseHandler);
 
-		while (!USPiEthernetAvailable()) {
-			snprintf(tempBuffer, tempBufferSize, "Waiting for ethernet...");
-			screen.PrintText(false, 0, y_pos+=16, tempBuffer, COLOUR_WHITE, COLOUR_BLACK);
-			MsDelay(500);
-		}
 
 		CheckOptions();
+		Net::Initialize(options);
 
 		IEC_Bus::SetSplitIECLines(options.SplitIECLines());
 		IEC_Bus::SetInvertIECInputs(options.InvertIECInputs());

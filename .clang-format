@@ -1,0 +1,18 @@
+﻿---
+AlignAfterOpenBracket: AlwaysBreak
+AllowShortBlocksOnASingleLine: 'false'
+BinPackArguments: 'false'
+BinPackParameters: 'false'
+BreakBeforeBraces: Allman
+BreakConstructorInitializers: AfterColon
+ColumnLimit: '100'
+ConstructorInitializerAllOnOneLineOrOnePerLine: 'true'
+IndentWidth: '4'
+MaxEmptyLinesToKeep: '1'
+NamespaceIndentation: All
+PointerAlignment: Left
+SortIncludes: 'true'
+TabWidth: '4'
+UseTab: Always
+
+...
