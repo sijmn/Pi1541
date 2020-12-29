@@ -1,7 +1,8 @@
 #pragma once
 #include <functional>
-#include "net.h"
+
 #include "net-ethernet.h"
+#include "net.h"
 
 namespace Net::Dhcp
 {
@@ -66,33 +67,17 @@ namespace Net::Dhcp
 
 		constexpr static size_t SerializedLength()
 		{
-			return
-				sizeof(Opcode) +
-				sizeof(hardwareAddressType) +
-				sizeof(hardwareAddressLength) +
-				sizeof(hops) +
-				sizeof(transactionId) +
-				sizeof(secondsElapsed) +
-				sizeof(flags) +
-				sizeof(clientIpAddress) +
-				sizeof(yourIpAddress) +
-				sizeof(serverIpAddress) +
-				sizeof(relayIpAddress) +
-				sizeof(clientHardwareAddress) +
-				sizeof(serverHostname) +
-				sizeof(bootFile) +
-				sizeof(magicValue);
+			return sizeof(Opcode) + sizeof(hardwareAddressType) + sizeof(hardwareAddressLength) +
+				sizeof(hops) + sizeof(transactionId) + sizeof(secondsElapsed) + sizeof(flags) +
+				sizeof(clientIpAddress) + sizeof(yourIpAddress) + sizeof(serverIpAddress) +
+				sizeof(relayIpAddress) + sizeof(clientHardwareAddress) + sizeof(serverHostname) +
+				sizeof(bootFile) + sizeof(magicValue);
 		}
 
 		size_t Serialize(uint8_t* buffer, const size_t size) const;
-		static size_t Deserialize(
-			Header& out, const uint8_t* buffer, const size_t size);
+		static size_t Deserialize(Header& out, const uint8_t* buffer, const size_t size);
 	};
 
 	void ObtainIp(std::function<void()>& callback);
-	void HandlePacket(
-		const Ethernet::Header& ethernetHeader,
-		const uint8_t* buffer,
-		size_t size
-	);
+	void HandlePacket(const Ethernet::Header& ethernetHeader, const uint8_t* buffer, size_t size);
 } // namespace Net::Dhcp

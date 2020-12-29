@@ -1,7 +1,8 @@
 #pragma once
-#include <vector>
-#include <string>
 #include <cstdint>
+#include <string>
+#include <vector>
+
 #include "net-ethernet.h"
 #include "net-ipv4.h"
 
@@ -26,11 +27,7 @@ namespace Net::Udp
 
 		static constexpr size_t SerializedLength()
 		{
-			return
-				sizeof(sourcePort) +
-				sizeof(destinationPort) +
-				sizeof(length) +
-				sizeof(checksum);
+			return sizeof(sourcePort) + sizeof(destinationPort) + sizeof(length) + sizeof(checksum);
 		}
 
 		size_t Serialize(uint8_t* buffer, const size_t size) const;
@@ -41,6 +38,5 @@ namespace Net::Udp
 		const Ethernet::Header ethernetHeader,
 		const Ipv4::Header ipv4Header,
 		const uint8_t* buffer,
-		const size_t size
-	);
+		const size_t size);
 } // namespace Net::Udp

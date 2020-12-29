@@ -1,5 +1,12 @@
-﻿---
+---
 AlignAfterOpenBracket: AlwaysBreak
+AlignConsecutiveMacros: 'false'
+AlignConsecutiveAssignments: 'false'
+AlignConsecutiveDeclarations: 'false'
+AlignEscapedNewlines: DontAlign
+AlignOperands: 'false'
+AlignTrailingComments: 'false'
+AllowAllArgumentsOnNextLine: 'true'
 AllowShortBlocksOnASingleLine: 'false'
 BinPackArguments: 'false'
 BinPackParameters: 'false'
@@ -14,5 +21,4 @@ PointerAlignment: Left
 SortIncludes: 'true'
 TabWidth: '4'
 UseTab: Always
-
 ...

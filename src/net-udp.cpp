@@ -6,19 +6,12 @@
 
 namespace Net::Udp
 {
-	Header::Header()
-	{}
+	Header::Header() {}
 
-	Header::Header(
-		Port sourcePort,
-		Port destinationPort,
-		uint16_t length
-	) :
-		sourcePort(sourcePort),
-		destinationPort(destinationPort),
-		length(length),
-		checksum(0)
-	{}
+	Header::Header(Port sourcePort, Port destinationPort, uint16_t length) :
+		sourcePort(sourcePort), destinationPort(destinationPort), length(length), checksum(0)
+	{
+	}
 
 	size_t Header::Serialize(uint8_t* buffer, const size_t bufferSize) const
 	{
@@ -57,24 +50,24 @@ namespace Net::Udp
 		const Ethernet::Header ethernetHeader,
 		const Ipv4::Header ipv4Header,
 		const uint8_t* buffer,
-		const size_t bufferSize
-	) {
+		const size_t bufferSize)
+	{
 		Header udpHeader;
 		const auto headerSize = udpHeader.Deserialize(buffer, bufferSize);
 		if (headerSize == 0 || headerSize != udpHeader.SerializedLength())
 		{
 			DEBUG_LOG(
 				"Dropped UDP header (invalid buffer size %lu, expected at least %lu)\r\n",
-				bufferSize, Header::SerializedLength()
-			);
+				bufferSize,
+				Header::SerializedLength());
 			return;
 		}
 		if (udpHeader.length <= bufferSize)
 		{
 			DEBUG_LOG(
 				"Dropped UDP packet (invalid buffer size %lu, expected at least %lu)\r\n",
-				bufferSize, udpHeader.length
-			);
+				bufferSize,
+				udpHeader.length);
 			return;
 		}
 
@@ -83,8 +76,7 @@ namespace Net::Udp
 			Dhcp::HandlePacket(
 				ethernetHeader,
 				buffer + udpHeader.SerializedLength(),
-				bufferSize - udpHeader.SerializedLength()
-			);
+				bufferSize - udpHeader.SerializedLength());
 		}
 		else if (udpHeader.destinationPort == Port::Tftp)
 		{
@@ -93,8 +85,7 @@ namespace Net::Udp
 				ipv4Header,
 				udpHeader,
 				buffer + udpHeader.SerializedLength(),
-				bufferSize - udpHeader.SerializedLength()
-			);
+				bufferSize - udpHeader.SerializedLength());
 		}
 	}
 } // namespace Net::Udp

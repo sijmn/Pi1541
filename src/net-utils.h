@@ -1,6 +1,6 @@
-#include <cstdint>
-#include <cstddef>
 #include <array>
+#include <cstddef>
+#include <cstdint>
 
 namespace Net::Utils
 {
@@ -11,4 +11,4 @@ namespace Net::Utils
 	uint32_t Crc32(const uint8_t* buffer, size_t size);
 	uint16_t InternetChecksum(const void* data, size_t size);
 	MacAddress GetMacAddress();
-};
+}; // namespace Net::Utils

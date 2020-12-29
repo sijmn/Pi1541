@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+
 #include "net-udp.h"
 
 namespace Net::Tftp
@@ -76,6 +77,5 @@ namespace Net::Tftp
 		const Ipv4::Header ipv4ReqHeader,
 		const Udp::Header udpReqHeader,
 		const uint8_t* data,
-		const size_t dataSize
-	);
+		const size_t dataSize);
 } // namespace Net::Tftp

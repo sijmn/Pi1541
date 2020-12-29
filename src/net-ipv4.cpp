@@ -1,9 +1,9 @@
 #include <cassert>
 
-#include "net-ipv4.h"
-#include "net-ethernet.h"
 #include "net-arp.h"
+#include "net-ethernet.h"
 #include "net-icmp.h"
+#include "net-ipv4.h"
 #include "net-udp.h"
 #include "net-utils.h"
 
@@ -14,8 +14,7 @@ namespace Net::Ipv4
 	Header::Header() {}
 
 	Header::Header(
-		Protocol protocol, uint32_t sourceIp, uint32_t destinationIp, uint16_t totalLength
-	) :
+		Protocol protocol, uint32_t sourceIp, uint32_t destinationIp, uint16_t totalLength) :
 		version(4),
 		ihl(5),
 		dscp(0),
@@ -29,7 +28,8 @@ namespace Net::Ipv4
 		headerChecksum(0),
 		sourceIp(sourceIp),
 		destinationIp(destinationIp)
-	{}
+	{
+	}
 
 	size_t Header::Serialize(uint8_t* buffer, const size_t bufferSize) const
 	{
@@ -70,9 +70,8 @@ namespace Net::Ipv4
 		return i;
 	}
 
-	size_t Header::Deserialize(
-		Header& out, const uint8_t* buffer, const size_t bufferSize
-	) {
+	size_t Header::Deserialize(Header& out, const uint8_t* buffer, const size_t bufferSize)
+	{
 		if (bufferSize <= SerializedLength())
 		{
 			return 0;
@@ -95,36 +94,36 @@ namespace Net::Ipv4
 		out.headerChecksum = buffer[10] << 8 | buffer[11];
 
 		out.sourceIp = buffer[12] << 24 | buffer[13] << 16 | buffer[14] << 8 | buffer[15];
-		out.destinationIp =
-			buffer[16] << 24 | buffer[17] << 16 | buffer[18] << 8 | buffer[19];
+		out.destinationIp = buffer[16] << 24 | buffer[17] << 16 | buffer[18] << 8 | buffer[19];
 
 		return 20;
 	}
 
 	void HandlePacket(
-		const Ethernet::Header& ethernetHeader,
-		const uint8_t* buffer,
-		const size_t bufferSize
-	) {
+		const Ethernet::Header& ethernetHeader, const uint8_t* buffer, const size_t bufferSize)
+	{
 		Header header;
 		const auto headerSize = Header::Deserialize(header, buffer, bufferSize);
 		if (headerSize != Header::SerializedLength())
 		{
 			DEBUG_LOG(
-				"Dropped IPv4 packet (invalid buffer size %lu, expected at least %lu)\r\n"
-				bufferSize, headerSize
-			);
+				"Dropped IPv4 packet (invalid buffer size %lu, expected at least %lu)\r\n",
+				bufferSize,
+				headerSize);
 			return;
 		}
 
 		// Update ARP table
-		Arp::ArpTable.insert(
-			std::make_pair(header.sourceIp, ethernetHeader.macSource));
+		Arp::ArpTable.insert(std::make_pair(header.sourceIp, ethernetHeader.macSource));
 
-		if (header.version != 4) return;
-		if (header.ihl != 5) return; // Not supported
-		if (header.destinationIp != Utils::Ipv4Address) return;
-		if (header.fragmentOffset != 0) return; // TODO Support this
+		if (header.version != 4)
+			return;
+		if (header.ihl != 5)
+			return; // Not supported
+		if (header.destinationIp != Utils::Ipv4Address)
+			return;
+		if (header.fragmentOffset != 0)
+			return; // TODO Support this
 
 		if (header.protocol == Ipv4::Protocol::Icmp)
 		{
@@ -132,8 +131,7 @@ namespace Net::Ipv4
 		}
 		else if (header.protocol == Ipv4::Protocol::Udp)
 		{
-			Udp::HandlePacket(
-				ethernetHeader, header, buffer + headerSize, bufferSize - headerSize);
+			Udp::HandlePacket(ethernetHeader, header, buffer + headerSize, bufferSize - headerSize);
 		}
 	}
 } // namespace Net::Ipv4

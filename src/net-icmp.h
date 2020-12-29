@@ -24,8 +24,7 @@ namespace Net::Icmp
 		}
 
 		size_t Serialize(uint8_t* buffer, const size_t bufferSize) const;
-		static size_t Deserialize(
-			Header& out, const uint8_t* buffer, const size_t bufferSize);
+		static size_t Deserialize(Header& out, const uint8_t* buffer, const size_t bufferSize);
 	};
 
 	struct EchoHeader
@@ -42,8 +41,7 @@ namespace Net::Icmp
 		}
 
 		size_t Serialize(uint8_t* buffer, const size_t bufferSize) const;
-		static size_t Deserialize(
-			EchoHeader& out, const uint8_t* buffer, const size_t bufferSize);
+		static size_t Deserialize(EchoHeader& out, const uint8_t* buffer, const size_t bufferSize);
 	};
 
 	void SendEchoRequest(const Utils::MacAddress mac, const uint32_t ip);

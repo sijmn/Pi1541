@@ -1,6 +1,7 @@
 #pragma once
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
+
 #include "net-ethernet.h"
 
 namespace Net::Ipv4
@@ -29,12 +30,7 @@ namespace Net::Ipv4
 		uint32_t destinationIp;
 
 		Header();
-		Header(
-			Protocol protocol,
-			uint32_t sourceIp,
-			uint32_t destinationIp,
-			uint16_t totalLength
-		);
+		Header(Protocol protocol, uint32_t sourceIp, uint32_t destinationIp, uint16_t totalLength);
 
 		static constexpr size_t SerializedLength()
 		{
@@ -43,13 +39,9 @@ namespace Net::Ipv4
 		}
 
 		size_t Serialize(uint8_t* buffer, const size_t bufferSize) const;
-		static size_t Deserialize(
-			Header& out, const uint8_t* buffer, const size_t bufferSize);
+		static size_t Deserialize(Header& out, const uint8_t* buffer, const size_t bufferSize);
 	};
 
 	void HandlePacket(
-		const Ethernet::Header& ethernetHeader,
-		const uint8_t* buffer,
-		const size_t bufferSize
-	);
+		const Ethernet::Header& ethernetHeader, const uint8_t* buffer, const size_t bufferSize);
 } // namespace Net::Ipv4

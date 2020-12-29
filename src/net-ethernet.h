@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+
 #include "net-utils.h"
 
 namespace Net::Ethernet
@@ -29,7 +30,6 @@ namespace Net::Ethernet
 		}
 
 		size_t Serialize(uint8_t* buffer, const size_t size) const;
-		static size_t Deserialize(
-			Header& out, const uint8_t* buffer, const size_t size);
+		static size_t Deserialize(Header& out, const uint8_t* buffer, const size_t size);
 	};
 } // namespace Net::Ethernet

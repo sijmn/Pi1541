@@ -1,5 +1,6 @@
 #pragma once
 #include <unordered_map>
+
 #include "net-ethernet.h"
 #include "net-utils.h"
 
@@ -29,46 +30,36 @@ namespace Net::Arp
 
 		constexpr size_t SerializedLength() const
 		{
-			return
-				sizeof(hardwareType) +
-				sizeof(protocolType) +
-				sizeof(hardwareAddressLength) +
-				sizeof(protocolAddressLength) +
-				sizeof(operation) +
-				senderMac.size() +
-				sizeof(senderIp) +
-				targetMac.size() +
-				sizeof(targetIp);
+			return sizeof(hardwareType) + sizeof(protocolType) + sizeof(hardwareAddressLength) +
+				sizeof(protocolAddressLength) + sizeof(operation) + senderMac.size() +
+				sizeof(senderIp) + targetMac.size() + sizeof(targetIp);
 		}
 
 		size_t Serialize(uint8_t* buffer, const size_t bufferSize);
 		size_t Deserialize(const uint8_t* buffer, const size_t bufferSize);
 	};
 
-	void HandlePacket(
-		const Ethernet::Header header, const uint8_t* buffer, const size_t bufferSize);
+	void
+	HandlePacket(const Ethernet::Header header, const uint8_t* buffer, const size_t bufferSize);
 
 	void SendPacket(
 		const Operation operation,
 		const Utils::MacAddress targetMac,
 		const Utils::MacAddress senderMac,
 		const uint32_t senderIp,
-		const uint32_t targetIp
-	);
+		const uint32_t targetIp);
 
 	void SendRequest(
 		const Utils::MacAddress targetMac,
 		const Utils::MacAddress senderMac,
 		const uint32_t senderIp,
-		const uint32_t targetIp
-	);
+		const uint32_t targetIp);
 
 	void SendReply(
 		const Utils::MacAddress targetMac,
 		const Utils::MacAddress senderMac,
 		const uint32_t senderIp,
-		const uint32_t targetIp
-	);
+		const uint32_t targetIp);
 
 	void SendAnnouncement(const Utils::MacAddress mac, const uint32_t ip);
 

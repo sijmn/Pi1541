@@ -1,32 +1,25 @@
 #include <cstring>
+
 #include "net-ethernet.h"
 
 namespace Net::Ethernet
 {
-	Header::Header()
-	{}
+	Header::Header() {}
 
 	Header::Header(EtherType type) :
-		macDestination(Utils::MacBroadcast),
-		macSource{0, 0, 0, 0, 0, 0},
-		type(type)
-	{}
+		macDestination(Utils::MacBroadcast), macSource{0, 0, 0, 0, 0, 0}, type(type)
+	{
+	}
 
-	Header::Header(
-		MacAddress macSource, EtherType type
-	) :
-		macDestination(Utils::MacBroadcast),
-		macSource(macSource),
-		type(type)
-	{}
+	Header::Header(MacAddress macSource, EtherType type) :
+		macDestination(Utils::MacBroadcast), macSource(macSource), type(type)
+	{
+	}
 
-	Header::Header(
-		MacAddress macDestination, MacAddress macSource, EtherType type
-	) :
-		macDestination(macDestination),
-		macSource(macSource),
-		type(type)
-	{}
+	Header::Header(MacAddress macDestination, MacAddress macSource, EtherType type) :
+		macDestination(macDestination), macSource(macSource), type(type)
+	{
+	}
 
 	size_t Header::Serialize(uint8_t* buffer, const size_t size) const
 	{
