@@ -25,7 +25,7 @@ namespace Net::Arp
 		uint32_t targetIp;
 
 		Packet();
-		Packet(uint16_t operation);
+		Packet(const uint16_t operation);
 
 		constexpr size_t SerializedLength() const
 		{
@@ -41,36 +41,36 @@ namespace Net::Arp
 				sizeof(targetIp);
 		}
 
-		size_t Serialize(uint8_t* buffer);
-
-		static Packet Deserialize(const uint8_t* buffer);
+		size_t Serialize(uint8_t* buffer, const size_t bufferSize);
+		size_t Deserialize(const uint8_t* buffer, const size_t bufferSize);
 	};
 
-	void HandlePacket(Ethernet::Header header, uint8_t* buffer);
+	void HandlePacket(
+		const Ethernet::Header header, const uint8_t* buffer, const size_t bufferSize);
 
 	void SendPacket(
-		Operation operation,
-		Utils::MacAddress targetMac,
-		Utils::MacAddress senderMac,
-		uint32_t senderIp,
-		uint32_t targetIp
+		const Operation operation,
+		const Utils::MacAddress targetMac,
+		const Utils::MacAddress senderMac,
+		const uint32_t senderIp,
+		const uint32_t targetIp
 	);
 
 	void SendRequest(
-		Utils::MacAddress targetMac,
-		Utils::MacAddress senderMac,
-		uint32_t senderIp,
-		uint32_t targetIp
+		const Utils::MacAddress targetMac,
+		const Utils::MacAddress senderMac,
+		const uint32_t senderIp,
+		const uint32_t targetIp
 	);
 
 	void SendReply(
-		Utils::MacAddress targetMac,
-		Utils::MacAddress senderMac,
-		uint32_t senderIp,
-		uint32_t targetIp
+		const Utils::MacAddress targetMac,
+		const Utils::MacAddress senderMac,
+		const uint32_t senderIp,
+		const uint32_t targetIp
 	);
 
-	void SendAnnouncement(Utils::MacAddress mac, uint32_t ip);
+	void SendAnnouncement(const Utils::MacAddress mac, const uint32_t ip);
 
 	extern std::unordered_map<uint32_t, Utils::MacAddress> ArpTable;
 } // namespace Net::Arp
