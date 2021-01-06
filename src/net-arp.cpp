@@ -89,7 +89,7 @@ namespace Net::Arp
 		arpPacket.targetIp = targetIp;
 		arpPacket.senderIp = senderIp;
 
-		Ethernet::Header ethernetHeader(senderMac, targetMac, Ethernet::EtherType::Arp);
+		Ethernet::Header ethernetHeader(targetMac, senderMac, Ethernet::EtherType::Arp);
 
 		uint8_t buffer[USPI_FRAME_BUFFER_SIZE];
 		size_t size = 0;
@@ -136,7 +136,7 @@ namespace Net::Arp
 		if (arpSize == 0 || arpSize != arpPacket.SerializedLength())
 		{
 			DEBUG_LOG(
-				"Dropped ARP packet (invalid buffer size %lu, expected %lu)\r\n",
+				"Dropped ARP packet (invalid buffer size %u, expected %u)\r\n",
 				bufferSize,
 				arpPacket.SerializedLength());
 			return;

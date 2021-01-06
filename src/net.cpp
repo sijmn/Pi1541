@@ -6,14 +6,23 @@
 #include <uspi.h>
 #include <uspios.h>
 
+extern "C"
+{
+#include "rpiHardware.h"
+}
+
 namespace Net
 {
-	static void postInitialize(unsigned int, void* parameter, void*);
+	static uint32_t postInitializeTime = 0;
+	static Options* options;
+
+	static void postInitialize();
 	static void ipObtained();
 
 	void Initialize(Options& options)
 	{
 		// Wait for ethernet to become available.
+		DEBUG_LOG("Waiting for ethernet\r\n");
 		while (!USPiEthernetAvailable())
 		{
 			MsDelay(500);
@@ -21,14 +30,22 @@ namespace Net
 
 		// Wait 3 seconds, then run postInitialize
 		const auto optionsVoid = static_cast<void*>(&options);
-		StartKernelTimer(3 * HZ, postInitialize, optionsVoid, nullptr);
+		DEBUG_LOG("Scheduled post-init\r\n");
+		Net::options = &options;
+		postInitializeTime = read32(ARM_SYSTIMER_CLO) + 30000;
 	}
 
 	void Update()
 	{
+		if (postInitializeTime && read32(ARM_SYSTIMER_CLO) > postInitializeTime)
+		{
+			postInitialize();
+			postInitializeTime = 0;
+		}
+
 		unsigned int bufferSize = 0;
 		uint8_t buffer[USPI_FRAME_BUFFER_SIZE];
-		if (!USPiEthernetAvailable() || !USPiReceiveFrame(buffer, &bufferSize))
+		if (!USPiReceiveFrame(buffer, &bufferSize))
 		{
 			return;
 		}
@@ -38,7 +55,7 @@ namespace Net
 		if (headerSize == 0 || headerSize != Ethernet::Header::SerializedLength())
 		{
 			DEBUG_LOG(
-				"Dropped ethernet packet (invalid buffer size %lu, expected at least %lu)\r\n",
+				"Dropped ethernet packet (invalid buffer size %u, expected at least %u)\r\n",
 				headerSize,
 				Ethernet::Header::SerializedLength());
 			return;
@@ -55,40 +72,51 @@ namespace Net
 		}
 	}
 
-	static void postInitialize(unsigned int, void* parameter, void*)
+	static void postInitialize()
 	{
 		DEBUG_LOG("Running network post-init\r\n");
-		const auto options = static_cast<const Options*>(parameter);
 
 		if (options->GetDHCPEnable())
 		{
+			DEBUG_LOG("DHCP enabled, trying to obtain IP\r\n");
 			std::function<void()> callback = ipObtained;
 			Dhcp::ObtainIp(callback);
 		}
 		else
 		{
 			// Try parsing the IP address in the options.
-			uint8_t ip[4];
-			int scanned = sscanf(
-				options->GetIPAddress(), "%hhu.%hhu.%hhu.%hhu", &ip[3], &ip[2], &ip[1], &ip[0]);
+			unsigned int ip[4];
+			char dot;
+			int scanned =
+				sscanf(options->GetIPAddress(), "%u.%u.%u.%u", &ip[0], &ip[1], &ip[2], &ip[3]);
 
 			if (scanned == 4)
 			{
-				DEBUG_LOG("Setting IP address %d.%d.%d.%d\r\n", ip[3], ip[2], ip[1], ip[0]);
-				Utils::Ipv4Address = *reinterpret_cast<uint32_t*>(ip);
-			}
+				DEBUG_LOG("Setting IP address %u.%u.%u.%u\r\n", ip[0], ip[1], ip[2], ip[3]);
+				Utils::Ipv4Address = 0;
+				for (int i = 0; i < 4; i++)
+				{
+					Utils::Ipv4Address <<= 8;
+					Utils::Ipv4Address |= ip[i];
+				}
 
-			ipObtained();
+				ipObtained();
+			}
+			else
+			{
+				DEBUG_LOG("Invalid IP address '%s'\r\n", options->GetIPAddress());
+			}
 		}
 	}
 
 	static void ipObtained()
 	{
-#ifdef DEBUG
-		uint8_t* ip = reinterpret_cast<uint8_t*>(Utils::Ipv4Address);
-		DEBUG_LOG("Obtained IP address %d.%d.%d.%d\r\n", ip[3], ip[2], ip[1], ip[0]);
-#endif
-
+		DEBUG_LOG(
+			"Obtained IP address %ld.%ld.%ld.%ld\r\n",
+			Utils::Ipv4Address >> 24,
+			(Utils::Ipv4Address >> 16) & 0xFF,
+			(Utils::Ipv4Address >> 8) & 0xFF,
+			Utils::Ipv4Address & 0xFF);
 		Arp::SendAnnouncement(Utils::GetMacAddress(), Utils::Ipv4Address);
 	}
 } // namespace Net

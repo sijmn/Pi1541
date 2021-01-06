@@ -241,7 +241,7 @@ namespace Net::Dhcp
 		if (dhcpSize != Header::SerializedLength())
 		{
 			DEBUG_LOG(
-				"Dropped DHCP packet (invalid buffer size %lu, expected %lu)\r\n",
+				"Dropped DHCP packet (invalid buffer size %u, expected %u)\r\n",
 				size,
 				Header::SerializedLength());
 			return;

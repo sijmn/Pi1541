@@ -23,7 +23,12 @@ namespace Net::Icmp
 			return sizeof(type) + sizeof(code) + sizeof(checksum);
 		}
 
-		size_t Serialize(uint8_t* buffer, const size_t bufferSize) const;
+		void UpdateChecksum(const uint8_t* data, const size_t dataSize);
+		size_t Serialize(
+			uint8_t* buffer,
+			const size_t bufferSize,
+			const uint8_t* data,
+			const size_t dataSize) const;
 		static size_t Deserialize(Header& out, const uint8_t* buffer, const size_t bufferSize);
 	};
 
@@ -45,5 +50,9 @@ namespace Net::Icmp
 	};
 
 	void SendEchoRequest(const Utils::MacAddress mac, const uint32_t ip);
-	void HandlePacket(const uint8_t* buffer, const size_t bufferSize);
+	void HandlePacket(
+		Ethernet::Header ethernetHeader,
+		Ipv4::Header ipv4Header,
+		const uint8_t* buffer,
+		const size_t bufferSize);
 } // namespace Net::Icmp

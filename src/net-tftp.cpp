@@ -32,9 +32,9 @@ namespace Net::Tftp
 		if (size == 0)
 		{
 			DEBUG_LOG(
-				"Dropped TFTP packet (invalid buffer size %lu, expected at least %lu)\r\n",
+				"Dropped TFTP packet (invalid buffer size %u, expected at least %u)\r\n",
 				dataSize,
-				sizeof(WriteReadRequestPacket::opcode) + 2)
+				sizeof(WriteReadRequestPacket::opcode) + 2);
 			return nullptr;
 		}
 
@@ -93,9 +93,9 @@ namespace Net::Tftp
 		if (tftpSize == 0)
 		{
 			DEBUG_LOG(
-				"Dropped TFTP data packet (invalid buffer size %lu, expected at least %lu)\r\n",
+				"Dropped TFTP data packet (invalid buffer size %u, expected at least %u)\r\n",
 				size,
-				sizeof(packet.opcode) + sizeof(packet.blockNumber))
+				sizeof(packet.opcode) + sizeof(packet.blockNumber));
 			return nullptr;
 		}
 
@@ -140,7 +140,7 @@ namespace Net::Tftp
 		if (reqBufferSize < payloadSize)
 		{
 			DEBUG_LOG(
-				"Dropped TFTP packet (invalid buffer size %lu, expected at least %lu)\r\n",
+				"Dropped TFTP packet (invalid buffer size %u, expected at least %u)\r\n",
 				reqBufferSize,
 				payloadSize);
 		}

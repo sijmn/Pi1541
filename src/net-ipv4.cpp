@@ -9,6 +9,10 @@
 
 #include "debug.h"
 
+#include "types.h"
+#include <cstring>
+#include <uspi.h>
+
 namespace Net::Ipv4
 {
 	Header::Header() {}
@@ -102,12 +106,14 @@ namespace Net::Ipv4
 	void HandlePacket(
 		const Ethernet::Header& ethernetHeader, const uint8_t* buffer, const size_t bufferSize)
 	{
+		char printBuffer[USPI_FRAME_BUFFER_SIZE] = {};
+
 		Header header;
 		const auto headerSize = Header::Deserialize(header, buffer, bufferSize);
 		if (headerSize != Header::SerializedLength())
 		{
 			DEBUG_LOG(
-				"Dropped IPv4 packet (invalid buffer size %lu, expected at least %lu)\r\n",
+				"Dropped IPv4 packet (invalid buffer size %u, expected at least %u)\r\n",
 				bufferSize,
 				headerSize);
 			return;
@@ -117,20 +123,42 @@ namespace Net::Ipv4
 		Arp::ArpTable.insert(std::make_pair(header.sourceIp, ethernetHeader.macSource));
 
 		if (header.version != 4)
+		{
+			DEBUG_LOG(
+				"Dropped IPv4 packet (invalid header version %u, expected 4)\r\n", header.version);
 			return;
+		}
 		if (header.ihl != 5)
-			return; // Not supported
-		if (header.destinationIp != Utils::Ipv4Address)
+		{
+			// Not supported
+			DEBUG_LOG("Dropped IPv4 packet (unsupported IHL %u, expected 5)\r\n", header.ihl);
 			return;
+		}
+		if (header.destinationIp != Utils::Ipv4Address)
+		{
+			DEBUG_LOG(
+				"Dropped IPv4 packet (invalid destination IP address %08lx)\r\n",
+				header.destinationIp);
+			return;
+		}
 		if (header.fragmentOffset != 0)
-			return; // TODO Support this
+		{
+			// TODO Support this
+			DEBUG_LOG(
+				"Dropped IPv4 packet (unexpected fragment offset %u, expected 0)\r\n",
+				header.fragmentOffset);
+			return;
+		}
 
 		if (header.protocol == Ipv4::Protocol::Icmp)
 		{
-			Icmp::HandlePacket(buffer, bufferSize - headerSize);
+			DEBUG_LOG("Ethernet -> IPv4 -> ICMP\r\n");
+			Icmp::HandlePacket(
+				ethernetHeader, header, buffer + headerSize, bufferSize - headerSize);
 		}
 		else if (header.protocol == Ipv4::Protocol::Udp)
 		{
+			DEBUG_LOG("Ethernet -> IPv4 -> UDP\r\n");
 			Udp::HandlePacket(ethernetHeader, header, buffer + headerSize, bufferSize - headerSize);
 		}
 	}

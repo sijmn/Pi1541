@@ -57,7 +57,7 @@ namespace Net::Udp
 		if (headerSize == 0 || headerSize != udpHeader.SerializedLength())
 		{
 			DEBUG_LOG(
-				"Dropped UDP header (invalid buffer size %lu, expected at least %lu)\r\n",
+				"Dropped UDP header (invalid buffer size %u, expected at least %u)\r\n",
 				bufferSize,
 				Header::SerializedLength());
 			return;
@@ -65,7 +65,7 @@ namespace Net::Udp
 		if (udpHeader.length <= bufferSize)
 		{
 			DEBUG_LOG(
-				"Dropped UDP packet (invalid buffer size %lu, expected at least %lu)\r\n",
+				"Dropped UDP packet (invalid buffer size %u, expected at least %u)\r\n",
 				bufferSize,
 				udpHeader.length);
 			return;
