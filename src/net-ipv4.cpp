@@ -106,8 +106,6 @@ namespace Net::Ipv4
 	void HandlePacket(
 		const Ethernet::Header& ethernetHeader, const uint8_t* buffer, const size_t bufferSize)
 	{
-		char printBuffer[USPI_FRAME_BUFFER_SIZE] = {};
-
 		Header header;
 		const auto headerSize = Header::Deserialize(header, buffer, bufferSize);
 		if (headerSize != Header::SerializedLength())

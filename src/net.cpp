@@ -29,7 +29,6 @@ namespace Net
 		}
 
 		// Wait 3 seconds, then run postInitialize
-		const auto optionsVoid = static_cast<void*>(&options);
 		DEBUG_LOG("Scheduled post-init\r\n");
 		Net::options = &options;
 		postInitializeTime = read32(ARM_SYSTIMER_CLO) + 30000;
@@ -86,7 +85,6 @@ namespace Net
 		{
 			// Try parsing the IP address in the options.
 			unsigned int ip[4];
-			char dot;
 			int scanned =
 				sscanf(options->GetIPAddress(), "%u.%u.%u.%u", &ip[0], &ip[1], &ip[2], &ip[3]);
 
