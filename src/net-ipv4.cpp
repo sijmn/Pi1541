@@ -111,9 +111,23 @@ namespace Net::Ipv4
 		if (headerSize != Header::SerializedLength())
 		{
 			DEBUG_LOG(
-				"Dropped IPv4 packet (invalid buffer size %u, expected at least %u)\r\n",
+				"Dropped IPv4 header (invalid buffer size %u, expected at least %u)\r\n",
 				bufferSize,
 				headerSize);
+			return;
+		}
+		DEBUG_LOG(
+			"IPv4 { src=%08lx, dst=%08lx, len=%u, protocol=%u }\r\n",
+			header.sourceIp,
+			header.destinationIp,
+			header.totalLength,
+			static_cast<uint8_t>(header.protocol));
+		if (bufferSize < header.totalLength)
+		{
+			DEBUG_LOG(
+				"Dropped IPv4 packet (invalid buffer size %u, expected at least %u)\r\n",
+				bufferSize,
+				header.totalLength);
 			return;
 		}
 

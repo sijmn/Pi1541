@@ -62,7 +62,14 @@ namespace Net::Udp
 				Header::SerializedLength());
 			return;
 		}
-		if (udpHeader.length <= bufferSize)
+
+		DEBUG_LOG(
+			"UDP { src=%u, dst=%u, len=%u, chk=%u }\r\n",
+			static_cast<uint16_t>(udpHeader.sourcePort),
+			static_cast<uint16_t>(udpHeader.destinationPort),
+			udpHeader.length,
+			udpHeader.checksum);
+		if (bufferSize < udpHeader.length)
 		{
 			DEBUG_LOG(
 				"Dropped UDP packet (invalid buffer size %u, expected at least %u)\r\n",
