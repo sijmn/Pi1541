@@ -1,8 +1,20 @@
 #include "acutest.h"
+#include <cassert>
 #include <cstring>
-#include <src/net-arp.h>
+#include <src/types.h>
+#include <uspi.h>
 
-extern "C" void USPiSendFrame(const void* pBuffer, unsigned nLength) {}
+#include <src/net-arp.h>
+#include <src/net-ipv4.h>
+
+uint8_t uspiBuffer[USPI_FRAME_BUFFER_SIZE];
+
+extern "C" int USPiSendFrame(const void* pBuffer, unsigned nLength)
+{
+	assert(nLength <= USPI_FRAME_BUFFER_SIZE);
+	memcpy(uspiBuffer, pBuffer, nLength);
+	return nLength;
+}
 
 extern "C" void USPiGetMACAddress(unsigned char Buffer[6])
 {
@@ -20,5 +32,9 @@ TEST_LIST = {
 	{"Net::Utils::Crc32", TestNetUtilsCrc32},
 	{"Net::Utils::GetMacAddress", TestNetUtilsGetMacAddress},
 	{"Net::Arp::Packet", TestNetArpPacket},
+	{"Net::Arp::SendPacket", TestNetArpSendPacket},
+	{"Net::Arp::SendRequest", TestNetArpSendRequest},
+	{"Net::Arp::SendReply", TestNetArpSendReply},
+	{"Net::Arp::SendAnnouncement", TestNetArpSendAnnouncement},
 	{nullptr, nullptr},
 };

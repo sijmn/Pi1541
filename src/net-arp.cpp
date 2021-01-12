@@ -21,7 +21,7 @@ namespace Net::Arp
 	{
 	}
 
-	size_t Packet::Serialize(uint8_t* buffer, const size_t bufferSize)
+	size_t Packet::Serialize(uint8_t* buffer, const size_t bufferSize) const
 	{
 		if (bufferSize < SerializedLength())
 		{

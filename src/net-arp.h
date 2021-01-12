@@ -35,7 +35,7 @@ namespace Net::Arp
 				sizeof(senderIp) + sizeof(targetMac) + sizeof(targetIp);
 		}
 
-		size_t Serialize(uint8_t* buffer, const size_t bufferSize);
+		size_t Serialize(uint8_t* buffer, const size_t bufferSize) const;
 		size_t Deserialize(const uint8_t* buffer, const size_t bufferSize);
 	};
 
@@ -46,20 +46,20 @@ namespace Net::Arp
 		const Operation operation,
 		const Utils::MacAddress targetMac,
 		const Utils::MacAddress senderMac,
-		const uint32_t senderIp,
-		const uint32_t targetIp);
+		const uint32_t targetIp,
+		const uint32_t senderIp);
 
 	void SendRequest(
 		const Utils::MacAddress targetMac,
 		const Utils::MacAddress senderMac,
-		const uint32_t senderIp,
-		const uint32_t targetIp);
+		const uint32_t targetIp,
+		const uint32_t senderIp);
 
 	void SendReply(
 		const Utils::MacAddress targetMac,
 		const Utils::MacAddress senderMac,
-		const uint32_t senderIp,
-		const uint32_t targetIp);
+		const uint32_t targetIp,
+		const uint32_t senderIp);
 
 	void SendAnnouncement(const Utils::MacAddress mac, const uint32_t ip);
 
