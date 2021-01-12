@@ -29,14 +29,14 @@ namespace Net::Icmp
 		buffer[i++] = static_cast<uint8_t>(type);
 		buffer[i++] = code;
 		buffer[i++] = 0;
-		buffer[i++] = 0 >> 8;
+		buffer[i++] = 0;
 
 		std::memcpy(buffer + i, data, dataSize);
 		i += dataSize;
 
 		uint16_t checksum = Utils::InternetChecksum(buffer, i);
-		buffer[2] = checksum;
-		buffer[3] = checksum >> 8;
+		buffer[2] = checksum >> 8;
+		buffer[3] = checksum;
 
 		return i;
 	}

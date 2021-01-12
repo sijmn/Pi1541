@@ -56,7 +56,7 @@ namespace Net::Ipv4
 
 		// Zero the checksum before calculating it
 		buffer[i++] = 0;
-		buffer[i++] = 0 >> 8;
+		buffer[i++] = 0;
 
 		buffer[i++] = sourceIp >> 24;
 		buffer[i++] = sourceIp >> 16;
@@ -68,8 +68,8 @@ namespace Net::Ipv4
 		buffer[i++] = destinationIp;
 
 		uint16_t checksum = Net::Utils::InternetChecksum(buffer, i);
-		buffer[10] = checksum;
-		buffer[11] = checksum >> 8;
+		buffer[10] = checksum >> 8;
+		buffer[11] = checksum;
 
 		return i;
 	}

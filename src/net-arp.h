@@ -28,11 +28,11 @@ namespace Net::Arp
 		Packet();
 		Packet(const uint16_t operation);
 
-		constexpr size_t SerializedLength() const
+		constexpr static size_t SerializedLength()
 		{
 			return sizeof(hardwareType) + sizeof(protocolType) + sizeof(hardwareAddressLength) +
-				sizeof(protocolAddressLength) + sizeof(operation) + senderMac.size() +
-				sizeof(senderIp) + targetMac.size() + sizeof(targetIp);
+				sizeof(protocolAddressLength) + sizeof(operation) + sizeof(senderMac) +
+				sizeof(senderIp) + sizeof(targetMac) + sizeof(targetIp);
 		}
 
 		size_t Serialize(uint8_t* buffer, const size_t bufferSize);

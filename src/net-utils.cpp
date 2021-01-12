@@ -68,24 +68,19 @@ namespace Net::Utils
 
 	uint16_t InternetChecksum(const void* data, size_t size)
 	{
+		if (size == 0)
+			return ~0;
+
+		auto u8data = static_cast<const uint8_t*>(data);
+
 		uint32_t sum = 0;
-		while (size > 1)
-		{
-			sum += *(uint16_t*)data;
-			data = (uint16_t*)data + 1;
+		for (size_t i = 0; i < size - 1; i += 2)
+			sum += u8data[i] << 8 | u8data[i + 1];
 
-			size -= 2;
-		}
+		if (size % 2 == 1)
+			sum += u8data[size - 1] << 8;
 
-		if (size > 0)
-		{
-			sum += *(uint16_t*)data;
-		}
-
-		while (sum >> 16)
-		{
-			sum = (sum & 0xFFFF) + (sum >> 16);
-		}
+		sum = (sum >> 16) + (sum & 0xFFFF);
 
 		return ~sum;
 	}

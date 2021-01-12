@@ -28,7 +28,7 @@ uspi/libuspi.a:
 	$(MAKE) -C uspi
 
 clean:
-	$(Q)$(RM) $(OBJS) $(TARGET).elf $(TARGET).map $(TARGET).lst $(TARGET).img
+	$(Q)$(RM) $(OBJS) $(DEPENDS) $(TARGET).elf $(TARGET).map $(TARGET).lst $(TARGET).img
 	$(MAKE) -C uspi clean
 
 include Makefile.rules
