@@ -132,8 +132,8 @@ namespace Net::Arp
 		const auto macAddress = Utils::GetMacAddress();
 
 		Packet arpPacket;
-		size_t arpSize = arpPacket.Deserialize(buffer, bufferSize);
-		if (arpSize == 0 || arpSize != arpPacket.SerializedLength())
+		const auto arpSize = arpPacket.Deserialize(buffer, bufferSize);
+		if (arpSize == 0)
 		{
 			DEBUG_LOG(
 				"Dropped ARP packet (invalid buffer size %u, expected %u)\r\n",

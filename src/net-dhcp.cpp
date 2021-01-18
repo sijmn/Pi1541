@@ -10,7 +10,6 @@
 #include "debug.h"
 #include "types.h"
 #include <uspi.h>
-#include <uspios.h>
 
 namespace Net::Dhcp
 {

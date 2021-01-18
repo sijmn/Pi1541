@@ -10,5 +10,6 @@
 namespace Net
 {
 	void Initialize(Options& options);
+	void HandlePacket(const uint8_t* buffer, const size_t bufferSize);
 	void Update();
 } // namespace Net

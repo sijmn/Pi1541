@@ -34,21 +34,8 @@ namespace Net
 		postInitializeTime = read32(ARM_SYSTIMER_CLO) + 30000;
 	}
 
-	void Update()
+	void HandlePacket(const uint8_t* buffer, const size_t bufferSize)
 	{
-		if (postInitializeTime && read32(ARM_SYSTIMER_CLO) > postInitializeTime)
-		{
-			postInitialize();
-			postInitializeTime = 0;
-		}
-
-		unsigned int bufferSize = 0;
-		uint8_t buffer[USPI_FRAME_BUFFER_SIZE];
-		if (!USPiReceiveFrame(buffer, &bufferSize))
-		{
-			return;
-		}
-
 		Ethernet::Header ethernetHeader;
 		auto headerSize = Ethernet::Header::Deserialize(ethernetHeader, buffer, bufferSize);
 		if (headerSize == 0 || headerSize != Ethernet::Header::SerializedLength())
@@ -69,6 +56,25 @@ namespace Net
 			Ipv4::HandlePacket(ethernetHeader, buffer + headerSize, bufferSize - headerSize);
 			break;
 		}
+	}
+
+
+	void Update()
+	{
+		if (postInitializeTime && read32(ARM_SYSTIMER_CLO) > postInitializeTime)
+		{
+			postInitialize();
+			postInitializeTime = 0;
+		}
+
+		unsigned int bufferSize = 0;
+		uint8_t buffer[USPI_FRAME_BUFFER_SIZE];
+		if (!USPiReceiveFrame(buffer, &bufferSize))
+		{
+			return;
+		}
+
+		HandlePacket(buffer, sizeof(buffer));
 	}
 
 	static void postInitialize()
