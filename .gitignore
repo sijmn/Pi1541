@@ -6,5 +6,9 @@
 *.lst
 *.map
 *.swp
+
+*.profdata
+*.profraw
+tests/inputs/
 test
 kernel

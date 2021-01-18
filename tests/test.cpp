@@ -31,10 +31,11 @@ TEST_LIST = {
 	{"Net::Utils::InternetChecksum", TestNetUtilsInternetChecksum},
 	{"Net::Utils::Crc32", TestNetUtilsCrc32},
 	{"Net::Utils::GetMacAddress", TestNetUtilsGetMacAddress},
-	{"Net::Arp::Packet", TestNetArpPacket},
+	{"Net::Arp::PacketSerializeDeserialize", TestNetArpPacketSerializeDeserialize},
 	{"Net::Arp::SendPacket", TestNetArpSendPacket},
 	{"Net::Arp::SendRequest", TestNetArpSendRequest},
 	{"Net::Arp::SendReply", TestNetArpSendReply},
 	{"Net::Arp::SendAnnouncement", TestNetArpSendAnnouncement},
+	{"Net::Arp::HandlePacket Invalid", TestNetArpHandlePacketInvalid},
 	{nullptr, nullptr},
 };

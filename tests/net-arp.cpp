@@ -1,3 +1,6 @@
+#include <string>
+#include <fstream>
+
 #define TEST_NO_MAIN
 #include "acutest.h"
 
@@ -43,18 +46,22 @@ static void netArpCheckSentPacket(
 	TEST_CHECK(packet.targetIp == targetIp);
 }
 
-void TestNetArpPacket()
+void TestNetArpPacketSerializeDeserialize()
 {
 	constexpr auto expectedSize = Arp::Packet::SerializedLength();
-	const auto packet = Arp::Packet(Arp::ARP_OPERATION_REQUEST);
+	const Arp::Packet packet(Arp::ARP_OPERATION_REQUEST);
 
+	// Serialize
 	uint8_t buffer[expectedSize];
-	packet.Serialize(buffer, sizeof(buffer));
-
-	Arp::Packet deserialized;
-	const auto size = deserialized.Deserialize(buffer, sizeof(buffer));
+	auto size = packet.Serialize(buffer, expectedSize);
 	TEST_CHECK(size == expectedSize);
 
+	// Deserialize
+	Arp::Packet deserialized;
+	size = deserialized.Deserialize(buffer, expectedSize);
+	TEST_CHECK(size == expectedSize);
+
+	// Check if the packet was deserialized correctly
 	TEST_CHECK(packet.hardwareType == deserialized.hardwareType);
 	TEST_CHECK(packet.protocolType == deserialized.protocolType);
 	TEST_CHECK(packet.hardwareAddressLength == deserialized.hardwareAddressLength);
@@ -64,6 +71,10 @@ void TestNetArpPacket()
 	TEST_CHECK(packet.senderIp == deserialized.senderIp);
 	TEST_CHECK(packet.targetMac == deserialized.targetMac);
 	TEST_CHECK(packet.targetIp == deserialized.targetIp);
+
+	// Check serialization and deserialization with a too small buffer
+	TEST_CHECK(packet.Serialize(buffer, expectedSize - 1) == 0);
+	TEST_CHECK(deserialized.Deserialize(buffer, expectedSize - 1) == 0);
 }
 
 void TestNetArpSendPacket()
@@ -88,4 +99,64 @@ void TestNetArpSendAnnouncement()
 {
 	Arp::SendAnnouncement(senderMac, senderIp);
 	netArpCheckSentPacket(Arp::ARP_OPERATION_REPLY, Utils::MacBroadcast, senderIp);
+}
+
+void loadFrame(const std::string path)
+{
+	std::ifstream stream(path);
+	stream.read(reinterpret_cast<char*>(uspiBuffer), sizeof(uspiBuffer));
+}
+
+void TestNetArpHandlePacketInvalid()
+{
+	Ethernet::Header ethernetHeader;
+
+	std::array<uint8_t, USPI_FRAME_BUFFER_SIZE> bufferRef = {};
+	auto buffer = bufferRef;
+
+	Arp::HandlePacket(ethernetHeader, buffer.data(), Arp::Packet::SerializedLength() - 1);
+	TEST_CHECK(buffer == bufferRef);
+
+	Arp::Packet reference(Arp::ARP_OPERATION_REQUEST);
+	reference.targetIp = Utils::Ipv4Address;
+
+	{
+		auto packet = reference;
+		packet.hardwareType = 2;
+		const auto size = packet.Serialize(bufferRef.data(), bufferRef.size());
+
+		buffer = bufferRef;
+		Arp::HandlePacket(ethernetHeader, buffer.data(), size);
+		TEST_CHECK(buffer == bufferRef);
+	}
+
+	{
+		auto packet = reference;
+		packet.protocolType = static_cast<Ethernet::EtherType>(1337);
+		const auto size = packet.Serialize(bufferRef.data(), bufferRef.size());
+
+		buffer = bufferRef;
+		Arp::HandlePacket(ethernetHeader, buffer.data(), size);
+		TEST_CHECK(buffer == bufferRef);
+	}
+
+	{
+		auto packet = reference;
+		packet.targetIp = 0xFEEDFEED;
+		const auto size = packet.Serialize(bufferRef.data(), bufferRef.size());
+
+		buffer = bufferRef;
+		Arp::HandlePacket(ethernetHeader, buffer.data(), size);
+		TEST_CHECK(buffer == bufferRef);
+	}
+
+	{
+		auto packet = reference;
+		packet.operation = static_cast<Arp::Operation>(31337);
+		const auto size = packet.Serialize(bufferRef.data(), bufferRef.size());
+
+		buffer = bufferRef;
+		Arp::HandlePacket(ethernetHeader, buffer.data(), size);
+		TEST_CHECK(buffer == bufferRef);
+	}
 }
