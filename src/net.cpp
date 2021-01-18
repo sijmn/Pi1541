@@ -58,7 +58,6 @@ namespace Net
 		}
 	}
 
-
 	void Update()
 	{
 		if (postInitializeTime && read32(ARM_SYSTIMER_CLO) > postInitializeTime)

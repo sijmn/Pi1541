@@ -3,33 +3,36 @@
 
 #include "net-utils.h"
 
-namespace Net::Ethernet
+namespace Net
 {
-	using Utils::MacAddress;
-
-	enum class EtherType : uint16_t
+	namespace Ethernet
 	{
-		Ipv4 = 0x0800,
-		Arp = 0x0806,
-	};
+		using Utils::MacAddress;
 
-	struct Header
-	{
-		MacAddress macDestination;
-		MacAddress macSource;
-		EtherType type;
-
-		Header();
-		Header(EtherType type);
-		Header(MacAddress macSource, EtherType type);
-		Header(MacAddress macDestination, MacAddress macSource, EtherType type);
-
-		constexpr static size_t SerializedLength()
+		enum class EtherType : uint16_t
 		{
-			return sizeof(macDestination) + sizeof(macSource) + sizeof(type);
-		}
+			Ipv4 = 0x0800,
+			Arp = 0x0806,
+		};
 
-		size_t Serialize(uint8_t* buffer, const size_t size) const;
-		static size_t Deserialize(Header& out, const uint8_t* buffer, const size_t size);
-	};
-} // namespace Net::Ethernet
+		struct Header
+		{
+			MacAddress macDestination;
+			MacAddress macSource;
+			EtherType type;
+
+			Header();
+			Header(EtherType type);
+			Header(MacAddress macSource, EtherType type);
+			Header(MacAddress macDestination, MacAddress macSource, EtherType type);
+
+			constexpr static size_t SerializedLength()
+			{
+				return sizeof(macDestination) + sizeof(macSource) + sizeof(type);
+			}
+
+			size_t Serialize(uint8_t* buffer, const size_t size) const;
+			static size_t Deserialize(Header& out, const uint8_t* buffer, const size_t size);
+		};
+	} // namespace Ethernet
+} // namespace Net
