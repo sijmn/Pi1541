@@ -32,5 +32,14 @@ $(TARGET): $(OBJS)
 	@echo "  LINK $@"
 	$(Q)$(CXX) $(CFLAGS) -o $(TARGET) $(OBJS)
 
+generate-inputs: $(SRCOBJS) generate-inputs.o
+	@echo "  LINK $@"
+	$(Q)$(CXX) $(CFLAGS) -o generate-inputs $(SRCOBJS) generate-inputs.o
+	./generate-inputs
+
+afl: $(SRCOBJS) afl.o
+	@echo "  LINK $@"
+	$(Q)afl-clang++ $(CFLAGS) -o afl $(SRCOBJS) afl.o
+
 clean:
-	$(Q)$(RM) $(SRCDIR)/*.o $(TESTDIR)/*.o $(SRCDIR)/*.d $(TESTDIR)/*.d $(TARGET) kernel
+	$(Q)$(RM) $(SRCDIR)/*.o $(TESTDIR)/*.o $(SRCDIR)/*.d $(TESTDIR)/*.d $(TARGET) kernel test afl generate-inputs *.profraw *.profdata

@@ -6,3 +6,4 @@ void TestNetArpSendRequest();
 void TestNetArpSendReply();
 void TestNetArpSendAnnouncement();
 void TestNetArpHandlePacketInvalid();
+void TestNetArpHandlePacketRequest();

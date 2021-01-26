@@ -160,3 +160,23 @@ void TestNetArpHandlePacketInvalid()
 		TEST_CHECK(buffer == bufferRef);
 	}
 }
+
+void TestNetArpHandlePacketRequest()
+{
+	Ethernet::Header ethernetHeader;
+	
+	std::array<uint8_t, USPI_FRAME_BUFFER_SIZE> buffer;
+	Arp::Packet reference(Arp::ARP_OPERATION_REQUEST);
+	reference.targetIp = Utils::Ipv4Address;
+	
+	{
+		auto packet = reference;
+		const auto size = packet.Serialize(buffer.data(), buffer.size());
+		const auto bufferRef = buffer;
+		
+		Arp::HandlePacket(ethernetHeader, buffer.data(), size);
+
+		// Check if we've got a proper response
+		TEST_CHECK(buffer != bufferRef);
+	}
+}

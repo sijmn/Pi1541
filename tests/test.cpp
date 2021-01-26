@@ -37,5 +37,6 @@ TEST_LIST = {
 	{"Net::Arp::SendReply", TestNetArpSendReply},
 	{"Net::Arp::SendAnnouncement", TestNetArpSendAnnouncement},
 	{"Net::Arp::HandlePacket Invalid", TestNetArpHandlePacketInvalid},
+	{"Net::Arp::HandlePacket Request", TestNetArpHandlePacketRequest},
 	{nullptr, nullptr},
 };
